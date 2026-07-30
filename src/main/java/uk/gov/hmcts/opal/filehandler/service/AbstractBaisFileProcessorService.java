@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.DigestUtils;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureFlags;
 import uk.gov.hmcts.opal.filehandler.config.BaisFileProcessorConfiguration;
+import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.entity.Type;
@@ -136,6 +137,7 @@ public abstract class AbstractBaisFileProcessorService {
             .status(Status.DUPLICATE)
             .filestoreUuid(fileStoreUuid)
             .createdDatetime(LocalDateTime.now(clock))
+            .opalDomain(Domain.MAINTENANCE)
             .errors(errorJson("File with name '%s' and checksum '%s' for source '%s' already processed skipping"
                 .formatted(fileName, fileChecksum, config.getSource())))
             .build();
@@ -156,6 +158,7 @@ public abstract class AbstractBaisFileProcessorService {
             .status(Status.INGESTED)
             .filestoreUuid(fileStoreUuid)
             .createdDatetime(LocalDateTime.now(clock))
+            .opalDomain(Domain.MAINTENANCE)
             .build();
     }
 
@@ -173,6 +176,7 @@ public abstract class AbstractBaisFileProcessorService {
             .checksum(fileChecksum)
             .status(Status.FAILED)
             .createdDatetime(LocalDateTime.now(clock))
+            .opalDomain(Domain.MAINTENANCE)
             .errors(errorJson(failureMessage))
             .build();
     }

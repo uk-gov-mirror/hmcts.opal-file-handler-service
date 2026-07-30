@@ -38,6 +38,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.hmcts.opal.filehandler.config.BaisFileProcessorConfiguration;
+import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
@@ -151,6 +152,7 @@ class AbstractBaisFileProcessorServiceTest {
             .checksum(CHECKSUM)
             .status(Status.SUCCESS)
             .createdDatetime(LocalDateTime.now(clock))
+            .opalDomain(Domain.MAINTENANCE)
             .build();
 
         when(interfaceFilesRepository.findByFileNameAndChecksumAndStatus(
@@ -288,6 +290,7 @@ class AbstractBaisFileProcessorServiceTest {
             .checksum(CHECKSUM)
             .status(Status.FAILED)
             .createdDatetime(LocalDateTime.now(clock))
+            .opalDomain(Domain.MAINTENANCE)
             .build();
     }
 
