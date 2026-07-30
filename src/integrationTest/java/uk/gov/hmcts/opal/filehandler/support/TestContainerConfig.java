@@ -49,8 +49,8 @@ public class TestContainerConfig {
 
         SFTP_CONTAINER = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:latest"))
             .withExposedPorts(22)
-            .withFileSystemBind(
-                "../opal-shared-infrastructure/bais-emulator/data",
+            .withClasspathResourceMapping(
+                "bais-emulator/data/",
                 "/home",
                 BindMode.READ_WRITE)
             .withCommand("BTEckoh-report::1001", "CAPS-report::1002");
@@ -60,8 +60,8 @@ public class TestContainerConfig {
         AZURITE_CONTAINER = new GenericContainer<>(DockerImageName.parse(DEFAULT_AZURITE_IMAGE))
             .withCommand(
                 "azurite-blob --blobHost 0.0.0.0 --blobPort " + AZURITE_BLOB_PORT + " --skipApiVersionCheck")
-            .withFileSystemBind(
-                "../opal-shared-infrastructure/azurite-data",
+            .withClasspathResourceMapping(
+                "azurite-data/",
                 "/data",
                 BindMode.READ_WRITE)
             .withExposedPorts(AZURITE_BLOB_PORT);
