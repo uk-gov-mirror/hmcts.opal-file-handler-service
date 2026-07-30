@@ -1,10 +1,12 @@
 package uk.gov.hmcts.opal.filehandler.support;
 
 import com.redis.testcontainers.RedisContainer;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -20,6 +22,7 @@ public class TestContainerConfig {
         System.getenv().getOrDefault("OPAL_POSTGRES_IMAGE", DEFAULT_POSTGRES_IMAGE);
     public static final PostgreSQLContainer POSTGRES_CONTAINER;
     public static final RedisContainer REDIS_CONTAINER;
+    public static final GenericContainer<?> SFTP_CONTAINER;
     public static final GenericContainer<?> AZURITE_CONTAINER;
     private static final int AZURITE_BLOB_PORT = 10000;
     private static final String AZURITE_ACCOUNT_NAME = "devstoreaccount1";
@@ -36,7 +39,7 @@ public class TestContainerConfig {
             .withCommand("postgres -c max_connections=200 -c log_connections=on -c log_disconnections=on");
 
         // Uncomment the following to enable connection to the Test Containers DB whilst debugging.
-        //POSTGRES_CONTAINER.setPortBindings(List.of("5432:5432"));
+        // POSTGRES_CONTAINER.setPortBindings(List.of("5432:5432"));
 
         POSTGRES_CONTAINER.start();
 
@@ -44,9 +47,23 @@ public class TestContainerConfig {
             .withExposedPorts(6379);
         REDIS_CONTAINER.start();
 
+        SFTP_CONTAINER = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:latest"))
+            .withExposedPorts(22)
+            .withFileSystemBind(
+                "../opal-shared-infrastructure/bais-emulator/data",
+                "/home",
+                BindMode.READ_WRITE)
+            .withCommand("BTEckoh-report::1001", "CAPS-report::1002");
+        SFTP_CONTAINER.setPortBindings(List.of("2222:22"));
+        SFTP_CONTAINER.start();
+
         AZURITE_CONTAINER = new GenericContainer<>(DockerImageName.parse(DEFAULT_AZURITE_IMAGE))
             .withCommand(
                 "azurite-blob --blobHost 0.0.0.0 --blobPort " + AZURITE_BLOB_PORT + " --skipApiVersionCheck")
+            .withFileSystemBind(
+                "../opal-shared-infrastructure/azurite-data",
+                "/data",
+                BindMode.READ_WRITE)
             .withExposedPorts(AZURITE_BLOB_PORT);
         AZURITE_CONTAINER.start();
     }
