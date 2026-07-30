@@ -82,7 +82,7 @@ public abstract class AbstractBaisFileProcessorService {
 
             final byte[] downloadedBytes = downloadStream.toByteArray();
 
-            String fileChecksum = calculateChecksum(new ByteArrayInputStream(downloadedBytes));
+            String fileChecksum = calculateChecksum(downloadedBytes);
 
             Optional<InterfaceFileEntity> duplicate = interfaceFilesRepository.findByFileNameAndChecksumAndStatus(
                 fileName, fileChecksum, Status.SUCCESS);
@@ -236,7 +236,7 @@ public abstract class AbstractBaisFileProcessorService {
     }
 
     @SuppressWarnings("java:S4790") // Used for checksum, not in a sensitive context
-    private static String calculateChecksum(InputStream stream) throws IOException {
-        return DigestUtils.md5DigestAsHex(stream);
+    private static String calculateChecksum(byte[] content) {
+        return DigestUtils.md5DigestAsHex(content);
     }
 }

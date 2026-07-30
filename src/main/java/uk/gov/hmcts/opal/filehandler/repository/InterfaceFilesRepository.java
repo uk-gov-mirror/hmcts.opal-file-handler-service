@@ -20,4 +20,6 @@ public interface InterfaceFilesRepository extends JpaRepository<InterfaceFileEnt
         Status status
     );
 
+    List<InterfaceFileEntity> findAllByFileName(String fileName);
+
 }
