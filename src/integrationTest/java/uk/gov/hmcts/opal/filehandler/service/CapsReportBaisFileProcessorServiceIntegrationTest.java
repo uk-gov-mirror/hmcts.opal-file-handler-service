@@ -45,7 +45,8 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
 
     @DynamicPropertySource
     static void dynamicProperties(DynamicPropertyRegistry registry) throws IOException {
-        registry.add("opal.file-handler-service.file-store.connection-string", TestContainerConfig::azuriteConnectionString);
+        registry.add("opal.file-handler-service.file-store.connection-string",
+            TestContainerConfig::azuriteConnectionString);
 
         var pk = Files.readString(
             Path.of("src/integrationTest/resources/bais-emulator/client-keys/CAPS-report/bais-sftp-key"));
@@ -55,19 +56,23 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
 
     @Test
     @DisplayName("AC2: CAPS file is present, read and stored correctly")
-    void capsReportBaisFileProcessorServiceShouldRunSuccesfully() {}
+    void capsReportBaisFileProcessorServiceShouldRunSuccesfully() {
+    }
 
     @Test
     @DisplayName("AC3: When no files are present the service should not fail")
-    void whenNoFilesArePresentServiceSucceeds() {}
+    void whenNoFilesArePresentServiceSucceeds() {
+    }
 
     @Test
     @DisplayName("AC4: Duplicate file with previous success should reject")
-    void duplicateFileShouldReject() {}
+    void duplicateFileShouldReject() {
+    }
 
     @Test
     @DisplayName("AC5: Duplicate file with no previous success should process")
-    void processDuplicateWithoutPreviousSuccess() {}
+    void processDuplicateWithoutPreviousSuccess() {
+    }
 
     @Nested
     @SpringBootTest(properties = {
