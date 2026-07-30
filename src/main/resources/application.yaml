@@ -115,6 +115,14 @@ opal:
   file-handler-service:
     file-store:
       connection-string: ${AZURE_STORAGE_CONNECTION_STRING:UseDevelopmentStorage=true}
+    file-types:
+      caps-report:
+        container-name: caps-report
+        feature-flag: CAPS-Report-file-transfer-job
+        file-name-regex: ^CapFa\.GB\.\d{8}\.\d{6}\.xml$
+        source: CAPS_REPORT
+        target: OPAL
+        sftp-username: ${BAIS_SFTP_CAPS_REPORT_USERNAME:}
     sftp:
       bais:
         host: ${BAIS_SFTP_CONNECTION_HOST:localhost}
