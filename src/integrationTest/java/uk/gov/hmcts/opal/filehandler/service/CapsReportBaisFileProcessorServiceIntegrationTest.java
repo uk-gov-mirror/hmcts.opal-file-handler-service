@@ -8,59 +8,40 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
+import org.springframework.test.context.TestPropertySource;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureDisabledException;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureFlags;
 import uk.gov.hmcts.opal.filehandler.config.CapsReportBaisFileProcessorConfiguration;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
-import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
-import uk.gov.hmcts.opal.filehandler.support.AbstractIntegrationTest;
+import uk.gov.hmcts.opal.filehandler.support.AbstractBaisFileProcessorServiceIntegrationTest;
 import uk.gov.hmcts.opal.filehandler.support.TestContainerConfig;
-import uk.gov.hmcts.opal.filehandler.util.BaisSftpClient;
 
 @ActiveProfiles("integration")
-@SpringBootTest(properties = {
-    "spring.main.web-application-type=none",
+@TestPropertySource(properties = {
     "opal.file-handler-service.file-types.caps-report.sftp-username=CAPS-report",
-    "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
     "launchdarkly.default-flag-values.CAPS-Report-file-transfer-job=true",
 })
 @Slf4j
-@Testcontainers
-public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractIntegrationTest {
+public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractBaisFileProcessorServiceIntegrationTest {
 
     private static final String CAPS_FILE = "CapFa.GB.20260701.173024.xml";
     private static final String CAPS_FILE_CHECKSUM = "1a78ae802423eb5d7cd9b878e318517c";
-    private static final String CAPS_FILE_RESOURCE = "src/integrationTest/resources/bais-emulator/" + CAPS_FILE;
+    private static final String CAPS_FILE_RESOURCE = "bais-emulator/" + CAPS_FILE;
     private static final String CAPS_FILE_CONTAINER = "/home/CAPS-report/" + CAPS_FILE;
-
-    @Autowired
-    private InterfaceFilesRepository repository;
-
-    @Autowired
-    private BaisSftpClient baisSftpClient;
 
     @Autowired
     private CapsReportBaisFileProcessorService capsReportBaisFileProcessorService;
 
     @Autowired
     private CapsReportBaisFileProcessorConfiguration capsReportBaisFileProcessorConfiguration;
-
-    @BeforeEach
-    void setUp() {
-        repository.deleteAll();
-    }
 
     @DynamicPropertySource
     static void dynamicProperties(DynamicPropertyRegistry registry) throws IOException {
@@ -74,7 +55,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
     }
 
     @Nested
-    @SpringBootTest(properties = {
+    @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
         "launchdarkly.default-flag-values.CAPS-Report-file-transfer-job=true"
     })
@@ -92,7 +73,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
     }
 
     @Nested
-    @SpringBootTest(properties = {
+    @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
         "launchdarkly.default-flag-values.CAPS-Report-file-transfer-job=false"
     })
@@ -112,21 +93,14 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
     @Test
     @DisplayName("AC2: CAPS file is present, read and stored correctly")
     void capsReportBaisFileProcessorServiceShouldRunSuccesfully() {
-        uploadCapsFileToSftp();
+        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
+        expectedNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 1);
 
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
-        assertThat(baisSftpClient.listRegularFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername()).size())
-            .isEqualTo(0);
-
-        List<InterfaceFileEntity> allEntities = repository.findAllByFileName(CAPS_FILE);
-        assertThat(allEntities.size()).isEqualTo(1);
-
-        InterfaceFileEntity entity = allEntities.getFirst();
-        assertThat(entity.getFileName()).isEqualTo(CAPS_FILE);
-        assertThat(entity.getStatus()).isEqualTo(Status.SUCCESS);
-        assertThat(entity.getChecksum()).isEqualTo(CAPS_FILE_CHECKSUM);
-
+        expectedNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
+        lastInterfaceEntityIsSuccess(CAPS_FILE, CAPS_FILE_CHECKSUM);
+        compareBlobChecksum(CAPS_FILE, CAPS_FILE_CHECKSUM, capsReportBaisFileProcessorConfiguration.getContainerName());
     }
 
     @Test
@@ -138,10 +112,10 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
     @Test
     @DisplayName("AC4: Duplicate file with previous success should reject")
     void duplicateFileShouldReject() {
-        uploadCapsFileToSftp();
+        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
-        uploadCapsFileToSftp();
+        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
         List<InterfaceFileEntity> allEntities = repository.findAllByFileName(CAPS_FILE);
@@ -156,7 +130,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
     @Test
     @DisplayName("AC5: Duplicate file with no previous success should process")
     void processDuplicateWithoutPreviousSuccess() {
-        uploadCapsFileToSftp();
+        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
         var entity = repository.findAllByFileName(CAPS_FILE)
@@ -165,7 +139,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
         entity.setStatus(Status.FAILED);
         repository.save(entity);
 
-        uploadCapsFileToSftp();
+        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
         List<InterfaceFileEntity> allEntities = repository.findAllByFileName(CAPS_FILE);
@@ -175,11 +149,6 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractI
         assertThat(entity2.getFileName()).isEqualTo(CAPS_FILE);
         assertThat(entity2.getStatus()).isEqualTo(Status.SUCCESS);
         assertThat(entity2.getChecksum()).isEqualTo(CAPS_FILE_CHECKSUM);
-    }
-
-    private void uploadCapsFileToSftp() {
-        TestContainerConfig.SFTP_CONTAINER.copyFileToContainer(
-            MountableFile.forHostPath(CAPS_FILE_RESOURCE), CAPS_FILE_CONTAINER);
     }
 
 }
