@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.io.IOException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,7 +37,7 @@ public class AutomatedTaskCapsReportIntegrationTest extends AbstractIntegrationT
     }
 
     @Test
-    void shouldCallAutomatedTaskRun() throws IOException {
+    void shouldCallAutomatedTaskRun() {
         verify(service, times(1)).run(any());
     }
 }
