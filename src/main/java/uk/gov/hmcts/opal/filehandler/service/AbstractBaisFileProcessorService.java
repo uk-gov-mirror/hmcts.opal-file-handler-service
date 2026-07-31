@@ -114,7 +114,9 @@ public abstract class AbstractBaisFileProcessorService {
                 processIngestedFile(entity, new ByteArrayInputStream(downloadedBytes));
             }
 
-            deleteRemoteFile(config, fileName, entity);
+            if (!entity.getStatus().equals(Status.FAILED)) {
+                deleteRemoteFile(config, fileName, entity);
+            }
         }
     }
 
@@ -205,10 +207,6 @@ public abstract class AbstractBaisFileProcessorService {
     }
 
     private void deleteRemoteFile(BaisFileProcessorConfiguration config, String fileName, InterfaceFileEntity entity) {
-        if (entity.getStatus().equals(Status.FAILED)) {
-            return;
-        }
-
         boolean deleted = baisSftpClient.deleteFile(config.getSftpUsername(), fileName);
 
         if (!deleted) {

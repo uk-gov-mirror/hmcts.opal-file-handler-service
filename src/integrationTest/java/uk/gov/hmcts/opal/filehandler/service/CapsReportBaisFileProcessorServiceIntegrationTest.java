@@ -141,6 +141,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
         assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.DUPLICATE);
+        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
 
         assertThat(logAppender.list)
             .filteredOn(event -> event.getLevel() == Level.ERROR)
@@ -158,6 +159,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
+        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
         assertEntitiesWithStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.FAILED_SUPERSEDED);
         assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.SUCCESS);
     }
