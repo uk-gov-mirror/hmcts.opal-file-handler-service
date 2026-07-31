@@ -1,17 +1,19 @@
 package uk.gov.hmcts.opal.filehandler.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobProperties;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Sort;
 import org.springframework.util.DigestUtils;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
@@ -27,8 +29,12 @@ import uk.gov.hmcts.opal.filehandler.util.BaisSftpClient;
     "spring.main.web-application-type=none",
     "launchdarkly.default-flag-values.release-1c-banking-interfaces=true"
 })
+@Slf4j
 @Testcontainers
 public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractIntegrationTest{
+
+    @Autowired
+    private Clock clock;
 
     @Autowired
     protected InterfaceFilesRepository repository;
@@ -49,33 +55,33 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
             MountableFile.forClasspathResource(resourcePath), containerPath);
     }
 
-    public final void expectedNumberOfSftpFiles(String username, int expected) {
-        List<String> sftpFiles = sftpClient.listRegularFiles(username);
-
-        if (sftpFiles.size() != expected) {
-            throw new AssertionError("Expected " + expected + " sftp files but found " + sftpFiles.size());
-        }
+    public final void assertNumberOfSftpFiles(String username, int expected) {
+        assertThat(sftpClient.listRegularFiles(username)).hasSize(expected);
     }
 
-    public final void lastInterfaceEntityIsSuccess(String fileName, String checksum) {
+    public final void assertEntitiesWithStatus(String fileName, String checksum, Status status) {
         List<InterfaceFileEntity> entities = repository.findAllByFileNameAndChecksumAndStatus(
-            fileName, checksum, Status.SUCCESS);
+            fileName, checksum, status);
 
-        assertThat(entities).hasSize(1);
-
-        InterfaceFileEntity entity = entities.getFirst();
-
-        assertThat(entity.getFileName()).isEqualTo(fileName);
-        assertThat(entity.getStatus()).isEqualTo(Status.SUCCESS);
-        assertThat(entity.getChecksum()).isEqualTo(checksum);
-        assertThat(entity.getType()).isEqualTo(Type.SOURCE);
-        assertThat(entity.getOpalDomain()).isEqualTo(Domain.MAINTENANCE);
-        assertThat(entity.getSource()).isEqualTo(Interface.CAPS_REPORT);
-        assertThat(entity.getTarget()).isEqualTo(Interface.OPAL);
-
+        assertThat(entities.size()).isGreaterThan(0);
     }
 
-    public final void compareBlobChecksum(String fileName, String fileChecksum, String containerName) {
+    public final void assertMostRecentEntityHasStatus(String fileName, String checksum, Status status) {
+        List<InterfaceFileEntity> allEntities = repository.findAll(Sort.by(Sort.Direction.ASC, "createdDatetime"));
+        assertThat(allEntities.size()).isGreaterThan(0);
+
+        InterfaceFileEntity mostRecent = allEntities.getLast();
+
+        assertThat(mostRecent.getFileName()).isEqualTo(fileName);
+        assertThat(mostRecent.getStatus()).isEqualTo(status);
+        assertThat(mostRecent.getChecksum()).isEqualTo(checksum);
+        assertThat(mostRecent.getType()).isEqualTo(Type.SOURCE);
+        assertThat(mostRecent.getOpalDomain()).isEqualTo(Domain.MAINTENANCE);
+        assertThat(mostRecent.getSource()).isEqualTo(Interface.CAPS_REPORT);
+        assertThat(mostRecent.getTarget()).isEqualTo(Interface.OPAL);
+    }
+
+    public final void assertBlobChecksum(String fileName, String fileChecksum, String containerName) {
         List<InterfaceFileEntity> entities = repository.findAllByFileNameAndChecksumAndStatus(
             fileName, fileChecksum, Status.SUCCESS);
 
@@ -94,6 +100,37 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
 
         assertThat(DigestUtils.md5DigestAsHex(content)).isEqualTo(fileChecksum);
         assertThat(HexFormat.of().formatHex(properties.getContentMd5())).isEqualTo(fileChecksum);
+    }
+
+    public final void createFailedInterfaceFile(String fileName, String checksum) {
+        InterfaceFileEntity entity = InterfaceFileEntity.builder()
+            .fileName(fileName)
+            .checksum(checksum)
+            .type(Type.SOURCE)
+            .source(Interface.CAPS_REPORT)
+            .target(Interface.OPAL)
+            .opalDomain(Domain.MAINTENANCE)
+            .createdDatetime(LocalDateTime.now(clock))
+            .status(Status.FAILED)
+            .errors("{\"message\": \"something went wrong\"}")
+            .build();
+
+        repository.save(entity);
+    }
+
+    public final void createSuccessfulInterfaceFile(String fileName, String checksum) {
+        InterfaceFileEntity entity = InterfaceFileEntity.builder()
+            .fileName(fileName)
+            .checksum(checksum)
+            .type(Type.SOURCE)
+            .source(Interface.CAPS_REPORT)
+            .target(Interface.OPAL)
+            .opalDomain(Domain.MAINTENANCE)
+            .createdDatetime(LocalDateTime.now(clock))
+            .status(Status.SUCCESS)
+            .build();
+
+        repository.save(entity);
     }
 
 }

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +18,6 @@ import org.springframework.test.context.TestPropertySource;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureDisabledException;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureFlags;
 import uk.gov.hmcts.opal.filehandler.config.CapsReportBaisFileProcessorConfiguration;
-import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.support.AbstractBaisFileProcessorServiceIntegrationTest;
 import uk.gov.hmcts.opal.filehandler.support.TestContainerConfig;
@@ -94,61 +92,43 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
     @DisplayName("AC2: CAPS file is present, read and stored correctly")
     void capsReportBaisFileProcessorServiceShouldRunSuccesfully() {
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
-        expectedNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 1);
-
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
-        expectedNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
-        lastInterfaceEntityIsSuccess(CAPS_FILE, CAPS_FILE_CHECKSUM);
-        compareBlobChecksum(CAPS_FILE, CAPS_FILE_CHECKSUM, capsReportBaisFileProcessorConfiguration.getContainerName());
+        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
+        assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.SUCCESS);
+
+        assertBlobChecksum(CAPS_FILE, CAPS_FILE_CHECKSUM, capsReportBaisFileProcessorConfiguration.getContainerName());
     }
 
     @Test
     @DisplayName("AC3: When no files are present the service should not fail")
     void whenNoFilesArePresentServiceSucceeds() {
+        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
+        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
     }
 
     @Test
     @DisplayName("AC4: Duplicate file with previous success should reject")
     void duplicateFileShouldReject() {
-        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
-        capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
+        createSuccessfulInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
 
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
-        List<InterfaceFileEntity> allEntities = repository.findAllByFileName(CAPS_FILE);
-        assertThat(allEntities.size()).isEqualTo(2);
-
-        InterfaceFileEntity entity = allEntities.getLast();
-        assertThat(entity.getFileName()).isEqualTo(CAPS_FILE);
-        assertThat(entity.getStatus()).isEqualTo(Status.DUPLICATE);
-        assertThat(entity.getChecksum()).isEqualTo(CAPS_FILE_CHECKSUM);
+        assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.DUPLICATE);
     }
 
     @Test
     @DisplayName("AC5: Duplicate file with no previous success should process")
     void processDuplicateWithoutPreviousSuccess() {
-        uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
-        capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
-
-        var entity = repository.findAllByFileName(CAPS_FILE)
-            .getFirst();
-
-        entity.setStatus(Status.FAILED);
-        repository.save(entity);
+        createFailedInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
 
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
-        List<InterfaceFileEntity> allEntities = repository.findAllByFileName(CAPS_FILE);
-        assertThat(allEntities.size()).isEqualTo(2);
-
-        InterfaceFileEntity entity2 = allEntities.getLast();
-        assertThat(entity2.getFileName()).isEqualTo(CAPS_FILE);
-        assertThat(entity2.getStatus()).isEqualTo(Status.SUCCESS);
-        assertThat(entity2.getChecksum()).isEqualTo(CAPS_FILE_CHECKSUM);
+        assertEntitiesWithStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.FAILED_SUPERSEDED);
+        assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.SUCCESS);
     }
 
 }
