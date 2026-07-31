@@ -3,13 +3,19 @@ package uk.gov.hmcts.opal.filehandler.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -18,6 +24,7 @@ import org.springframework.test.context.TestPropertySource;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureDisabledException;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureFlags;
 import uk.gov.hmcts.opal.filehandler.config.CapsReportBaisFileProcessorConfiguration;
+import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.support.AbstractBaisFileProcessorServiceIntegrationTest;
 import uk.gov.hmcts.opal.filehandler.support.TestContainerConfig;
@@ -40,6 +47,17 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
 
     @Autowired
     private CapsReportBaisFileProcessorConfiguration capsReportBaisFileProcessorConfiguration;
+
+    private final Logger logger = (Logger) LoggerFactory.getLogger(AbstractBaisFileProcessorService.class);
+    private final ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+
+    @BeforeEach
+    void setUp() {
+        repository.deleteAll();
+
+        logAppender.start();
+        logger.addAppender(logAppender);
+    }
 
     @DynamicPropertySource
     static void dynamicProperties(DynamicPropertyRegistry registry) throws IOException {
@@ -106,17 +124,30 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
         assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
         assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
+
+        assertThat(logAppender.list)
+            .filteredOn(event -> event.getLevel() == Level.INFO)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .containsExactly(String.format("No files found in BAIS for user '%s' when processing source 'CAPS_REPORT'",
+                capsReportBaisFileProcessorConfiguration.getSftpUsername()));
     }
 
     @Test
     @DisplayName("AC4: Duplicate file with previous success should reject")
     void duplicateFileShouldReject() {
-        createSuccessfulInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
+        InterfaceFileEntity success = createSuccessfulInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
 
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
         assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.DUPLICATE);
+
+        assertThat(logAppender.list)
+            .filteredOn(event -> event.getLevel() == Level.ERROR)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .containsExactly(
+                String.format("File with name '%s' and checksum '%s' for source 'CAPS_REPORT' is a duplicate of %s",
+                    CAPS_FILE, CAPS_FILE_CHECKSUM, success.getInterfaceFileId()));
     }
 
     @Test

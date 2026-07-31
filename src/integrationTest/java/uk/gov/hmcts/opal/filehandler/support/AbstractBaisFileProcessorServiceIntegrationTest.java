@@ -45,11 +45,6 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
     @Autowired
     protected BlobServiceClient blobServiceClient;
 
-    @BeforeEach
-    public void setUp() {
-        repository.deleteAll();
-    }
-
     public final void uploadResourceToSftp(String resourcePath, String containerPath) {
         TestContainerConfig.SFTP_CONTAINER.copyFileToContainer(
             MountableFile.forClasspathResource(resourcePath), containerPath);
@@ -102,7 +97,7 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
         assertThat(HexFormat.of().formatHex(properties.getContentMd5())).isEqualTo(fileChecksum);
     }
 
-    public final void createFailedInterfaceFile(String fileName, String checksum) {
+    public final InterfaceFileEntity createFailedInterfaceFile(String fileName, String checksum) {
         InterfaceFileEntity entity = InterfaceFileEntity.builder()
             .fileName(fileName)
             .checksum(checksum)
@@ -115,10 +110,10 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
             .errors("{\"message\": \"something went wrong\"}")
             .build();
 
-        repository.save(entity);
+        return repository.save(entity);
     }
 
-    public final void createSuccessfulInterfaceFile(String fileName, String checksum) {
+    public final InterfaceFileEntity createSuccessfulInterfaceFile(String fileName, String checksum) {
         InterfaceFileEntity entity = InterfaceFileEntity.builder()
             .fileName(fileName)
             .checksum(checksum)
@@ -130,7 +125,7 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
             .status(Status.SUCCESS)
             .build();
 
-        repository.save(entity);
+        return repository.save(entity);
     }
 
 }
