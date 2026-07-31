@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Sort;
@@ -31,7 +30,7 @@ import uk.gov.hmcts.opal.filehandler.util.BaisSftpClient;
 })
 @Slf4j
 @Testcontainers
-public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractIntegrationTest{
+public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private Clock clock;

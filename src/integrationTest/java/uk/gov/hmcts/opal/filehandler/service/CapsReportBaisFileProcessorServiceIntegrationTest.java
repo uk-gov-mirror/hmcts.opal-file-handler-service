@@ -135,7 +135,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
     @Test
     @DisplayName("AC4: Duplicate file with previous success should reject")
     void duplicateFileShouldReject() {
-        InterfaceFileEntity success = createSuccessfulInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
+        final InterfaceFileEntity success = createSuccessfulInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
 
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
