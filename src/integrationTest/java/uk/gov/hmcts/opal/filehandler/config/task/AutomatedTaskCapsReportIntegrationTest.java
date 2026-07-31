@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockReset;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.servlet.DispatcherServlet;
+import uk.gov.hmcts.opal.filehandler.service.CapsReportBaisFileProcessorService;
 import uk.gov.hmcts.opal.filehandler.support.AbstractIntegrationTest;
 
 @ActiveProfiles("integration")
@@ -28,7 +29,7 @@ public class AutomatedTaskCapsReportIntegrationTest extends AbstractIntegrationT
 
     // placeholder mock until the actual service is implemented formally
     @MockitoBean(enforceOverride = true, reset = MockReset.NONE)
-    private AutomatedCapsReport automatedCapsReport;
+    private CapsReportBaisFileProcessorService service;
 
     @Test
     void shouldNotCreateWebLayer() {
@@ -38,6 +39,6 @@ public class AutomatedTaskCapsReportIntegrationTest extends AbstractIntegrationT
 
     @Test
     void shouldCallAutomatedTaskRun() throws IOException {
-        verify(automatedCapsReport, times(1)).run(any());
+        verify(service, times(1)).run(any());
     }
 }

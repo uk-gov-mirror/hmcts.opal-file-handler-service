@@ -112,10 +112,9 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
 
-        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
         assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.SUCCESS);
-
         assertBlobChecksum(CAPS_FILE, CAPS_FILE_CHECKSUM, capsReportBaisFileProcessorConfiguration.getContainerName());
+        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
     }
 
     @Test
@@ -123,8 +122,8 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
     void whenNoFilesArePresentServiceSucceeds() {
         assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
         capsReportBaisFileProcessorService.run(capsReportBaisFileProcessorConfiguration);
-        assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
 
+        assertThat(repository.findAll()).isEmpty();
         assertThat(logAppender.list)
             .filteredOn(event -> event.getLevel() == Level.INFO)
             .extracting(ILoggingEvent::getFormattedMessage)
@@ -135,6 +134,8 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
     @Test
     @DisplayName("AC4: Duplicate file with previous success should reject")
     void duplicateFileShouldReject() {
+        // need another file to process just fine
+
         final InterfaceFileEntity success = createSuccessfulInterfaceFile(CAPS_FILE, CAPS_FILE_CHECKSUM);
 
         uploadResourceToSftp(CAPS_FILE_RESOURCE, CAPS_FILE_CONTAINER);
@@ -162,6 +163,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
         assertNumberOfSftpFiles(capsReportBaisFileProcessorConfiguration.getSftpUsername(), 0);
         assertEntitiesWithStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.FAILED_SUPERSEDED);
         assertMostRecentEntityHasStatus(CAPS_FILE, CAPS_FILE_CHECKSUM, Status.SUCCESS);
+        assertBlobChecksum(CAPS_FILE, CAPS_FILE_CHECKSUM, capsReportBaisFileProcessorConfiguration.getContainerName());
     }
 
 }

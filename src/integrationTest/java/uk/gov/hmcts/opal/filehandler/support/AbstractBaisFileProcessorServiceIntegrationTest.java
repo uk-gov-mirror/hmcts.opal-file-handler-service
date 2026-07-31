@@ -73,6 +73,12 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
         assertThat(mostRecent.getOpalDomain()).isEqualTo(Domain.MAINTENANCE);
         assertThat(mostRecent.getSource()).isEqualTo(Interface.CAPS_REPORT);
         assertThat(mostRecent.getTarget()).isEqualTo(Interface.OPAL);
+
+        if (status.equals(Status.SUCCESS)) {
+            assertThat(mostRecent.getErrors()).isNull();
+        } else {
+            assertThat(mostRecent.getErrors()).isNotNull();
+        }
     }
 
     public final void assertBlobChecksum(String fileName, String fileChecksum, String containerName) {
