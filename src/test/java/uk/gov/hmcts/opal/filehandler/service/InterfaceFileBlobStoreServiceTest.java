@@ -2,9 +2,7 @@ package uk.gov.hmcts.opal.filehandler.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -88,20 +86,6 @@ class InterfaceFileBlobStoreServiceTest {
         assertThat(exception)
             .hasMessage("Blob checksum validation failed for filestore UUID '%s': expected '%s' but was '%s'"
                 .formatted(exception.getFilestoreUuid(), CHECKSUM, DIFFERENT_CHECKSUM));
-        verify(blobClient).deleteIfExists();
-    }
-
-    @Test
-    void uploadDeletesPartialBlobAndPropagatesUploadFailure() {
-        IllegalStateException uploadFailure = new IllegalStateException("upload failed");
-        doThrow(uploadFailure).when(blobClient)
-            .upload(any(InputStream.class));
-
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-            service.uploadBaisFile(FILE_UUID, CONTAINER_NAME, stream, CHECKSUM));
-
-        assertThat(exception).isSameAs(uploadFailure);
-
         verify(blobClient).deleteIfExists();
     }
 

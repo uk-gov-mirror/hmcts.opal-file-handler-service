@@ -22,9 +22,8 @@ public class InterfaceFileEntityTestData {
     private final InterfaceFilesRepository repository;
     private final Clock clock;
 
-    public InterfaceFileEntity getTypicalInterfaceFile(long id, String fileName) {
-        return InterfaceFileEntity.builder()
-            .interfaceFileId(id)
+    public InterfaceFileEntity getTypicalInterfaceFile(String fileName) {
+        return repository.save(InterfaceFileEntity.builder()
             .source(Interface.NATWEST)
             .target(Interface.OPAL)
             .type(Type.SOURCE_JSON)
@@ -32,23 +31,25 @@ public class InterfaceFileEntityTestData {
             .fileName(fileName)
             .status(Status.INGESTED)
             .createdDatetime(LocalDateTime.now(clock))
-            .build();
+            .build());
     }
 
     public InterfaceFileEntity getTypicalRelatedChildInterfaceFile(
-        long id,
         String fileName,
         InterfaceFileEntity parent
     ) {
-        InterfaceFileEntity child = getTypicalInterfaceFile(id, fileName);
+        InterfaceFileEntity child = getTypicalInterfaceFile(fileName);
+
         child.setPaymentType(PaymentType.CASH);
         child.setBusinessUnitCode(new String[] {"AB01", "CD02"});
         child.setRelatedInterfaceFile(parent);
+
         return child;
     }
 
-    public InterfaceFileEntity getMaximumInterfaceFile(long id) {
-        InterfaceFileEntity interfaceFile = getTypicalInterfaceFile(id, "ei2-transformed-file.json");
+    public InterfaceFileEntity getMaximumInterfaceFile() {
+        InterfaceFileEntity interfaceFile = getTypicalInterfaceFile("ei2-transformed-file.json");
+
         interfaceFile.setSource(Interface.ALLPAY_DD);
         interfaceFile.setTarget(Interface.MARSTON);
         interfaceFile.setType(Type.TRANSFORMED_JSON);
@@ -61,11 +62,12 @@ public class InterfaceFileEntityTestData {
         interfaceFile.setErrors("[{\"errorCode\": \"E001\", \"errorMessage\": \"Sample error message\"}]");
         interfaceFile.setBusinessUnitCode(new String[] {"AB01", "CD02"});
         interfaceFile.setPaymentType(PaymentType.CHEQUE);
+
         return interfaceFile;
     }
 
-    public InterfaceFileEntity saveTypicalInterfaceFile(long id, String fileName) {
-        return repository.save(getTypicalInterfaceFile(id, fileName));
+    public InterfaceFileEntity saveTypicalInterfaceFile(String fileName) {
+        return repository.save(getTypicalInterfaceFile(fileName));
     }
 
     public InterfaceFileEntity saveAndFlushInterfaceFile(InterfaceFileEntity interfaceFile) {

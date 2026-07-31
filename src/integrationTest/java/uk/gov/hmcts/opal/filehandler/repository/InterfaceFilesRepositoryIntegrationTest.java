@@ -13,9 +13,6 @@ import uk.gov.hmcts.opal.filehandler.testdata.InterfaceFileEntityTestData;
 
 class InterfaceFilesRepositoryIntegrationTest extends AbstractIntegrationTest {
 
-    private static final long PARENT_ID = 910001L;
-    private static final long CHILD_ID = 910002L;
-
     @Autowired
     private InterfaceFilesRepository repository;
 
@@ -34,12 +31,10 @@ class InterfaceFilesRepositoryIntegrationTest extends AbstractIntegrationTest {
     @Transactional
     void shouldPersistAndLoadRelatedInterfaceFileRelationship() {
         InterfaceFileEntity parent = interfaceFileEntityTestData.saveTypicalInterfaceFile(
-            PARENT_ID,
             "parent-source-file.dat"
         );
 
         InterfaceFileEntity child = interfaceFileEntityTestData.getTypicalRelatedChildInterfaceFile(
-            CHILD_ID,
             "child-transformed-file.json",
             parent
         );
@@ -48,21 +43,25 @@ class InterfaceFilesRepositoryIntegrationTest extends AbstractIntegrationTest {
 
         entityManager.clear();
 
-        InterfaceFileEntity loadedChild = repository.findById(CHILD_ID).orElseThrow();
+        long childId = child.getInterfaceFileId();
+        long parentId = parent.getInterfaceFileId();
+
+        InterfaceFileEntity loadedChild = repository.findById(childId).orElseThrow();
 
         assertThat(loadedChild.getRelatedInterfaceFile()).isNotNull();
-        assertThat(loadedChild.getRelatedInterfaceFile().getInterfaceFileId()).isEqualTo(PARENT_ID);
+        assertThat(loadedChild.getRelatedInterfaceFile().getInterfaceFileId()).isEqualTo(parentId);
         assertThat(loadedChild.getRelatedInterfaceFile().getFileName()).isEqualTo("parent-source-file.dat");
     }
 
     @Test
     void shouldPersistAndLoadEi2Columns() {
-        InterfaceFileEntity interfaceFile = interfaceFileEntityTestData.getMaximumInterfaceFile(PARENT_ID);
+        InterfaceFileEntity interfaceFile = interfaceFileEntityTestData.getMaximumInterfaceFile();
+        long parentId = interfaceFile.getInterfaceFileId();
 
         interfaceFileEntityTestData.saveAndFlushInterfaceFile(interfaceFile);
         entityManager.clear();
 
-        InterfaceFileEntity loaded = repository.findById(PARENT_ID).orElseThrow();
+        InterfaceFileEntity loaded = repository.findById(parentId).orElseThrow();
 
         assertThat(loaded.getInterfaceFileId()).isEqualTo(interfaceFile.getInterfaceFileId());
         assertThat(loaded.getSource()).isEqualTo(interfaceFile.getSource());
