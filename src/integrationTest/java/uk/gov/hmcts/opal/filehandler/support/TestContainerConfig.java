@@ -47,7 +47,7 @@ public class TestContainerConfig {
             .withExposedPorts(6379);
         REDIS_CONTAINER.start();
 
-        SFTP_CONTAINER = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:latest"))
+        SFTP_CONTAINER = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:alpine"))
             .withExposedPorts(22)
             .withClasspathResourceMapping(
                 "bais-emulator/data/",

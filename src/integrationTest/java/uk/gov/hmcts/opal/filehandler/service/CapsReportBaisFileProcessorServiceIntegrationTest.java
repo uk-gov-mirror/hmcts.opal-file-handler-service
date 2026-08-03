@@ -7,9 +7,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -64,10 +64,19 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
         registry.add("opal.file-handler-service.file-store.connection-string",
             TestContainerConfig::azuriteConnectionString);
 
-        var pk = Files.readString(
-            Path.of("src/integrationTest/resources/bais-emulator/client-keys/CAPS-report/bais-sftp-key"));
+        ByteArrayOutputStream privateKeyStreamOut;
 
-        registry.add("opal.file-handler-service.sftp.bais.private-key", () -> pk);
+        try (InputStream privateKeyStream = CapsReportBaisFileProcessorServiceIntegrationTest.class.getClassLoader()
+            .getResourceAsStream("bais-emulator/client-keys/CAPS-report/bais-sftp-key")) {
+
+            privateKeyStreamOut = new ByteArrayOutputStream();
+            privateKeyStream.transferTo(privateKeyStreamOut);
+        }
+
+        String privateKey = privateKeyStreamOut.toString();
+
+        registry.add("opal.file-handler-service.sftp.bais.private-key", () -> privateKey);
+
     }
 
     @Nested
