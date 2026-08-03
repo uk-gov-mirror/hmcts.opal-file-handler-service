@@ -33,6 +33,9 @@ public class TestContainerConfig {
     private static final String AZURITE_ACCOUNT_KEY =
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 
+    private static final List<String> SFTP_USERS = List.of(
+        "CAPS-report");
+
     static {
         POSTGRES_CONTAINER = new PostgreSQLContainer(DockerImageName.parse(POSTGRES_IMAGE))
             .withDatabaseName("testdb")
@@ -51,15 +54,26 @@ public class TestContainerConfig {
 
         // Jenkins runs the tests in a container, so its classpath cannot be bind-mounted by the host Docker daemon.
         // Copy only the public key to keep the chroot root-owned; file operations use the user-owned upload directory.
-        SFTP_CONTAINER = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:alpine"))
+
+        var uid = 1001;
+        var sftpContainerBuilder = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:alpine"))
             .withExposedPorts(22)
             .withCopyToContainer(MountableFile.forClasspathResource(
-                "bais-emulator/data/CAPS-report/.ssh/keys/bais-sftp-key.pub"),
-                "/home/CAPS-report/.ssh/keys/bais-sftp-key.pub")
-            .withCopyToContainer(MountableFile.forClasspathResource(
-                "bais-emulator/configure-sftp", EXECUTABLE_FILE_MODE), "/etc/sftp.d/configure-sftp")
-            .withCommand("BTEckoh-report::1001::upload", "CAPS-report::1002::upload");
-        SFTP_CONTAINER.setPortBindings(List.of("2222:22"));
+                "bais-emulator/configure-sftp", EXECUTABLE_FILE_MODE), "/etc/sftp.d/configure-sftp");
+
+        for (String username :  SFTP_USERS) {
+            sftpContainerBuilder = sftpContainerBuilder
+                .withCommand(String.format("%s::%d::upload", username, uid))
+                .withCopyToContainer(MountableFile.forClasspathResource(
+                    "bais-emulator/keys/bais-sftp-key.pub"),
+                    String.format("/home/%s/.ssh/keys/bais-sftp-key.pub", username));
+
+            uid++;
+        }
+
+        sftpContainerBuilder.setPortBindings(List.of("2222:22"));
+
+        SFTP_CONTAINER = sftpContainerBuilder;
         SFTP_CONTAINER.start();
 
         AZURITE_CONTAINER = new GenericContainer<>(DockerImageName.parse(DEFAULT_AZURITE_IMAGE))

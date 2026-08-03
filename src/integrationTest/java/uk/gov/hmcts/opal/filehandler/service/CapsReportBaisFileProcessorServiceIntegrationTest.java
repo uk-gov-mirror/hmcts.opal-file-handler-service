@@ -7,9 +7,6 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,8 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureDisabledException;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureFlags;
@@ -27,7 +22,6 @@ import uk.gov.hmcts.opal.filehandler.config.CapsReportBaisFileProcessorConfigura
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.support.AbstractBaisFileProcessorServiceIntegrationTest;
-import uk.gov.hmcts.opal.filehandler.support.TestContainerConfig;
 
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
@@ -58,26 +52,6 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
 
         logAppender.start();
         logger.addAppender(logAppender);
-    }
-
-    @DynamicPropertySource
-    static void dynamicProperties(DynamicPropertyRegistry registry) throws IOException {
-        registry.add("opal.file-handler-service.file-store.connection-string",
-            TestContainerConfig::azuriteConnectionString);
-
-        ByteArrayOutputStream privateKeyStreamOut;
-
-        try (InputStream privateKeyStream = CapsReportBaisFileProcessorServiceIntegrationTest.class.getClassLoader()
-            .getResourceAsStream("bais-emulator/client-keys/CAPS-report/bais-sftp-key")) {
-
-            privateKeyStreamOut = new ByteArrayOutputStream();
-            privateKeyStream.transferTo(privateKeyStreamOut);
-        }
-
-        String privateKey = privateKeyStreamOut.toString();
-
-        registry.add("opal.file-handler-service.sftp.bais.private-key", () -> privateKey);
-
     }
 
     @Nested

@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobProperties;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
@@ -13,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Sort;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.DigestUtils;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
@@ -22,6 +27,7 @@ import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.entity.Type;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
+import uk.gov.hmcts.opal.filehandler.service.CapsReportBaisFileProcessorServiceIntegrationTest;
 import uk.gov.hmcts.opal.filehandler.util.BaisSftpClient;
 
 @SpringBootTest(properties = {
@@ -43,6 +49,25 @@ public class AbstractBaisFileProcessorServiceIntegrationTest extends AbstractInt
 
     @Autowired
     protected BlobServiceClient blobServiceClient;
+
+    @DynamicPropertySource
+    static void dynamicProperties(DynamicPropertyRegistry registry) throws IOException {
+        registry.add("opal.file-handler-service.file-store.connection-string",
+            TestContainerConfig::azuriteConnectionString);
+
+        ByteArrayOutputStream privateKeyStreamOut;
+
+        try (InputStream privateKeyStream = CapsReportBaisFileProcessorServiceIntegrationTest.class.getClassLoader()
+            .getResourceAsStream("bais-emulator/keys/bais-sftp-key")) {
+
+            privateKeyStreamOut = new ByteArrayOutputStream();
+            privateKeyStream.transferTo(privateKeyStreamOut);
+        }
+
+        String privateKey = privateKeyStreamOut.toString();
+
+        registry.add("opal.file-handler-service.sftp.bais.private-key", () -> privateKey);
+    }
 
     public final void uploadResourceToSftp(String resourcePath, String containerPath) {
         TestContainerConfig.SFTP_CONTAINER.copyFileToContainer(
