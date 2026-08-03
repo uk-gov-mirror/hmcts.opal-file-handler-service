@@ -10,6 +10,7 @@ import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 @TestConfiguration
 @Slf4j
@@ -25,6 +26,7 @@ public class TestContainerConfig {
     public static final GenericContainer<?> SFTP_CONTAINER;
     public static final GenericContainer<?> AZURITE_CONTAINER;
     private static final int AZURITE_BLOB_PORT = 10000;
+    private static final int EXECUTABLE_FILE_MODE = 0755;
     private static final String AZURITE_ACCOUNT_NAME = "devstoreaccount1";
     // This is the default account key for azurite, used exclusively for local dev on our docker images. It is not
     // a secret key, therefore safe to store here as config.
@@ -47,13 +49,16 @@ public class TestContainerConfig {
             .withExposedPorts(6379);
         REDIS_CONTAINER.start();
 
+        // Jenkins runs the tests in a container, so its classpath cannot be bind-mounted by the host Docker daemon.
+        // Copy only the public key to keep the chroot root-owned; file operations use the user-owned upload directory.
         SFTP_CONTAINER = new GenericContainer<>(DockerImageName.parse("atmoz/sftp:alpine"))
             .withExposedPorts(22)
-            .withClasspathResourceMapping(
-                "bais-emulator/data/",
-                "/home",
-                BindMode.READ_WRITE)
-            .withCommand("BTEckoh-report::1001", "CAPS-report::1002");
+            .withCopyToContainer(MountableFile.forClasspathResource(
+                "bais-emulator/data/CAPS-report/.ssh/keys/bais-sftp-key.pub"),
+                "/home/CAPS-report/.ssh/keys/bais-sftp-key.pub")
+            .withCopyToContainer(MountableFile.forClasspathResource(
+                "bais-emulator/configure-sftp", EXECUTABLE_FILE_MODE), "/etc/sftp.d/configure-sftp")
+            .withCommand("BTEckoh-report::1001::upload", "CAPS-report::1002::upload");
         SFTP_CONTAINER.setPortBindings(List.of("2222:22"));
         SFTP_CONTAINER.start();
 

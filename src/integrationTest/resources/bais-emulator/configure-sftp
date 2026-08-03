@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+# Start sessions in the writable directory created by the SFTP user configuration.
+sed -i 's|^ForceCommand internal-sftp$|ForceCommand internal-sftp -d /upload|' /etc/ssh/sshd_config

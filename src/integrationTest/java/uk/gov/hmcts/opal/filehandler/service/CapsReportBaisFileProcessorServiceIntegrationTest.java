@@ -40,7 +40,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
     private static final String CAPS_FILE = "CapFa.GB.20260701.173024.xml";
     private static final String CAPS_FILE_CHECKSUM = "1a78ae802423eb5d7cd9b878e318517c";
     private static final String CAPS_FILE_RESOURCE = "bais-emulator/" + CAPS_FILE;
-    private static final String CAPS_FILE_CONTAINER = "/home/CAPS-report/" + CAPS_FILE;
+    private static final String CAPS_FILE_CONTAINER = "/home/CAPS-report/upload/" + CAPS_FILE;
 
     @Autowired
     private CapsReportBaisFileProcessorService capsReportBaisFileProcessorService;
@@ -54,6 +54,7 @@ public class CapsReportBaisFileProcessorServiceIntegrationTest extends AbstractB
     @BeforeEach
     void setUp() {
         repository.deleteAll();
+        blobServiceClient.createBlobContainerIfNotExists(capsReportBaisFileProcessorConfiguration.getContainerName());
 
         logAppender.start();
         logger.addAppender(logAppender);
