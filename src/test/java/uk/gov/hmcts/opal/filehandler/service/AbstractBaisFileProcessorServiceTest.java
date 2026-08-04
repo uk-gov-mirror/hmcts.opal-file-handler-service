@@ -42,6 +42,7 @@ import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
+import uk.gov.hmcts.opal.filehandler.entity.Type;
 import uk.gov.hmcts.opal.filehandler.exception.BaisSftpFileDownloadException;
 import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
@@ -198,6 +199,36 @@ class AbstractBaisFileProcessorServiceTest {
     }
 
     @Test
+    void uploadFailureIsRetainedWhenDuplicateExists() {
+        InterfaceFileEntity duplicate = InterfaceFileEntity.builder()
+            .interfaceFileId(123L)
+            .source(Interface.CAPS_REPORT)
+            .target(Interface.OPAL)
+            .type(Type.SOURCE)
+            .fileName(MATCHING_FILE)
+            .checksum(CHECKSUM)
+            .status(Status.SUCCESS)
+            .createdDatetime(LocalDateTime.now(clock))
+            .opalDomain(Domain.MAINTENANCE)
+            .build();
+
+        when(interfaceFilesRepository.findByFileNameAndChecksumAndStatus(
+            MATCHING_FILE, CHECKSUM, Status.SUCCESS)).thenReturn(Optional.of(duplicate));
+        doThrow(new BlobUploadException(
+            UUID.randomUUID(), "test-container", new RuntimeException("storage unavailable")))
+            .when(interfaceFileBlobStoreService)
+            .uploadBaisFile(any(UUID.class), eq("test-container"), any(InputStream.class), eq(CHECKSUM));
+
+        service.run(baisFileProcessorConfiguration);
+
+        assertThat(savedStatuses).containsExactly(Status.FAILED);
+        assertThat(objectMapper.readTree(service.lastSavedEntity.getErrors()).get("message").asString())
+            .isEqualTo("Blob upload failed for file 'matching-file.dat': storage unavailable");
+        assertThat(service.processCount).isZero();
+        verify(baisSftpClient, never()).deleteFile(any(), any());
+    }
+
+    @Test
     void processingFailureRollsBackThenPersistsFailureAndSupersedesPreviousFailures() {
         InterfaceFileEntity previousFailure = failedEntity(10L);
         when(interfaceFilesRepository.findAllByFileNameAndChecksumAndStatus(
@@ -288,7 +319,7 @@ class AbstractBaisFileProcessorServiceTest {
             .interfaceFileId(id)
             .source(Interface.CAPS_REPORT)
             .target(Interface.OPAL)
-            .type(uk.gov.hmcts.opal.filehandler.entity.Type.SOURCE)
+            .type(Type.SOURCE)
             .fileName(MATCHING_FILE)
             .checksum(CHECKSUM)
             .status(Status.FAILED)

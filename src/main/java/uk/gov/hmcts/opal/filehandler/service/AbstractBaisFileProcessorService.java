@@ -78,59 +78,55 @@ public abstract class AbstractBaisFileProcessorService {
     }
 
     private void ingestFile(BaisFileProcessorConfiguration config, String fileName) throws IOException {
+        final byte[] downloadedBytes;
+
         try (ByteArrayOutputStream downloadStream = new ByteArrayOutputStream()) {
             baisSftpClient.downloadFile(config.getSftpUsername(), fileName, downloadStream);
-
-            final byte[] downloadedBytes = downloadStream.toByteArray();
-
-            String fileChecksum = calculateChecksum(downloadedBytes);
-
-            Optional<InterfaceFileEntity> duplicate = interfaceFilesRepository.findByFileNameAndChecksumAndStatus(
-                fileName, fileChecksum, Status.SUCCESS);
-
-            InterfaceFileEntity entity;
-
-            try {
-                UUID fileStoreUuid = UUID.randomUUID();
-
-                interfaceFileBlobStoreService.uploadBaisFile(
-                    fileStoreUuid, config.getContainerName(), new ByteArrayInputStream(downloadedBytes), fileChecksum);
-
-                if (duplicate.isPresent()) {
-                    entity = createDuplicateInterfaceFile(
-                        config, fileName, fileChecksum, fileStoreUuid, duplicate.get());
-                } else {
-                    entity = createNewInterfaceFile(config, fileName, fileChecksum, fileStoreUuid);
-                }
-            } catch (BlobChecksumValidationException e) {
-                entity = createFailureInterfaceFile(config, fileName, fileChecksum, e.getMessage());
-            } catch (BlobUploadException e) {
-                entity = createFailureInterfaceFile(config, fileName, fileChecksum,
-                    "Blob upload failed for file '%s': %s".formatted(fileName, e.getMessage()));
-            }
-
-            entity = saveInitialFile(entity);
-
-            if (entity.getStatus().equals(Status.INGESTED)) {
-                processIngestedFile(entity, new ByteArrayInputStream(downloadedBytes));
-            }
-
-            if (!entity.getStatus().equals(Status.FAILED)) {
-                deleteRemoteFile(config, fileName, entity);
-            }
+            downloadedBytes = downloadStream.toByteArray();
         }
+
+        String fileChecksum = calculateChecksum(downloadedBytes);
+        UUID fileStoreUuid = UUID.randomUUID();
+        Optional<InterfaceFileEntity> duplicate = interfaceFilesRepository.findByFileNameAndChecksumAndStatus(
+            fileName, fileChecksum, Status.SUCCESS);
+
+        InterfaceFileEntity entity;
+
+        try {
+            interfaceFileBlobStoreService.uploadBaisFile(
+                fileStoreUuid, config.getContainerName(), new ByteArrayInputStream(downloadedBytes), fileChecksum);
+
+            if (duplicate.isPresent()) {
+                log.error("File with name '{}' and checksum '{}' for source '{}' is a duplicate of {}",
+                    fileName, fileChecksum, config.getSource(), duplicate.get().getInterfaceFileId());
+
+                entity = createDuplicateInterfaceFile(
+                    config, fileName, fileChecksum, fileStoreUuid);
+            } else {
+                entity = createNewInterfaceFile(config, fileName, fileChecksum, fileStoreUuid);
+            }
+        } catch (BlobChecksumValidationException e) {
+            entity = createFailureInterfaceFile(config, fileName, fileChecksum, e.getMessage());
+        } catch (BlobUploadException e) {
+            entity = createFailureInterfaceFile(config, fileName, fileChecksum,
+                "Blob upload failed for file '%s': %s".formatted(fileName, e.getMessage()));
+        }
+
+        entity = saveInitialFile(entity);
+
+        if (entity.getStatus().equals(Status.INGESTED)) {
+            processIngestedFile(entity, new ByteArrayInputStream(downloadedBytes));
+        }
+
+        completeIngestion(config, fileName, entity);
     }
 
     private InterfaceFileEntity createDuplicateInterfaceFile(
         BaisFileProcessorConfiguration config,
         String fileName,
         String fileChecksum,
-        UUID fileStoreUuid,
-        InterfaceFileEntity duplicate
+        UUID fileStoreUuid
     ) {
-        log.error("File with name '{}' and checksum '{}' for source '{}' is a duplicate of {}",
-            fileName, fileChecksum, config.getSource(), duplicate.getInterfaceFileId());
-
         return InterfaceFileEntity.builder()
             .type(Type.SOURCE)
             .target(config.getTarget())
@@ -207,7 +203,11 @@ public abstract class AbstractBaisFileProcessorService {
         }
     }
 
-    private void deleteRemoteFile(BaisFileProcessorConfiguration config, String fileName, InterfaceFileEntity entity) {
+    private void completeIngestion(BaisFileProcessorConfiguration config, String fileName, InterfaceFileEntity entity) {
+        if (entity.getStatus().equals(Status.FAILED)) {
+            return;
+        }
+
         boolean deleted = baisSftpClient.deleteFile(config.getSftpUsername(), fileName);
 
         if (!deleted) {
