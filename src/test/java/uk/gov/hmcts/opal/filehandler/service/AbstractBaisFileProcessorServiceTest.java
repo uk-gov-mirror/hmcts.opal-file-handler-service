@@ -43,6 +43,7 @@ import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.exception.BaisSftpFileDownloadException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
 import uk.gov.hmcts.opal.filehandler.service.blobstore.InterfaceFileBlobStoreService;
 import uk.gov.hmcts.opal.filehandler.util.BaisSftpClient;
@@ -180,7 +181,9 @@ class AbstractBaisFileProcessorServiceTest {
         when(interfaceFilesRepository.findAllByFileNameAndChecksumAndStatus(
             MATCHING_FILE, CHECKSUM, Status.FAILED)).thenReturn(List.of(firstFailure, secondFailure));
 
-        doThrow(new RuntimeException("storage said \"no\"\nretry later")).when(interfaceFileBlobStoreService)
+        doThrow(new BlobUploadException(
+            UUID.randomUUID(), "test-container", new RuntimeException("storage said \"no\"\nretry later")))
+            .when(interfaceFileBlobStoreService)
             .uploadBaisFile(any(UUID.class), eq("test-container"), any(InputStream.class), eq(CHECKSUM));
 
         service.run(baisFileProcessorConfiguration);

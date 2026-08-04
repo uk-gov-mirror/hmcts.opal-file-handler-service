@@ -23,6 +23,7 @@ import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.entity.Type;
 import uk.gov.hmcts.opal.filehandler.exception.BlobChecksumValidationException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
 import uk.gov.hmcts.opal.filehandler.service.blobstore.InterfaceFileBlobStoreService;
 import uk.gov.hmcts.opal.filehandler.util.BaisSftpClient;
@@ -103,7 +104,7 @@ public abstract class AbstractBaisFileProcessorService {
                 }
             } catch (BlobChecksumValidationException e) {
                 entity = createFailureInterfaceFile(config, fileName, fileChecksum, e.getMessage());
-            } catch (RuntimeException e) {
+            } catch (BlobUploadException e) {
                 entity = createFailureInterfaceFile(config, fileName, fileChecksum,
                     "Blob upload failed for file '%s': %s".formatted(fileName, e.getMessage()));
             }

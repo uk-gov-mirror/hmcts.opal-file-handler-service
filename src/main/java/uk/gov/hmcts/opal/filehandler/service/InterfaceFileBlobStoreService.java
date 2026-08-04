@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.gov.hmcts.opal.filehandler.exception.BlobChecksumValidationException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 
 @Slf4j
 @Service
@@ -22,7 +23,11 @@ public class InterfaceFileBlobStoreService {
             .getBlobContainerClient(containerName)
             .getBlobClient(fileUuid.toString());
 
-        blobClient.upload(stream);
+        try {
+            blobClient.upload(stream);
+        } catch (RuntimeException e) {
+            throw new BlobUploadException(fileUuid, containerName, e);
+        }
 
         try {
             validateChecksum(blobClient, fileUuid, expectedChecksum);
