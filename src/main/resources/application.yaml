@@ -123,16 +123,13 @@ opal:
         source: CAPS_REPORT
         target: OPAL
         sftp-username: ${BAIS_SFTP_CAPS_REPORT_USERNAME:}
+      bteckoh-report:
+        container-name: ${BTECKOH_REPORT_AZURE_STORAGE_CONTAINER:bteckoh-report}
     sftp:
       bais:
         host: ${BAIS_SFTP_CONNECTION_HOST:localhost}
         port: ${BAIS_SFTP_CONNECTION_PORT:2222}
         private-key: ${BAIS_SFTP_PRIVATE_KEY:}
-    file-types:
-      bteckoh-report:
-        container-name: ${BTECKOH_REPORT_AZURE_STORAGE_CONTAINER:bteckoh-report}
-      caps-report:
-        container-name: ${CAPS_REPORT_AZURE_STORAGE_CONTAINER:caps-report}
 
 logging:
   level:
