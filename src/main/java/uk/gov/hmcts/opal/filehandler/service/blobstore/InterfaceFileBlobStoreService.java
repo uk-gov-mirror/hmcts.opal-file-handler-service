@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import uk.gov.hmcts.opal.filehandler.exception.BlobChecksumValidationException;
 import uk.gov.hmcts.opal.filehandler.exception.BlobNotFoundException;
 import uk.gov.hmcts.opal.filehandler.exception.BlobStorageContainerNotFoundException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 
 @Service
 @Slf4j(topic = "opal.InterfaceFilesBlobStoreService")
@@ -28,8 +29,14 @@ public class InterfaceFileBlobStoreService {
 
         try {
             blobClient.upload(stream);
-            validateChecksum(blobClient, fileUuid, expectedChecksum);
         } catch (RuntimeException exception) {
+            deleteFailedUpload(blobClient, exception);
+            throw new BlobUploadException(fileUuid, containerName, exception);
+        }
+
+        try {
+            validateChecksum(blobClient, fileUuid, expectedChecksum);
+        } catch (BlobChecksumValidationException exception) {
             deleteFailedUpload(blobClient, exception);
             throw exception;
         }

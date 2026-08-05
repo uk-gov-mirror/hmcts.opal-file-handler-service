@@ -2,7 +2,9 @@ package uk.gov.hmcts.opal.filehandler.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.hmcts.opal.filehandler.exception.BlobChecksumValidationException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 import uk.gov.hmcts.opal.filehandler.service.blobstore.InterfaceFileBlobStoreService;
 
 @ExtendWith(MockitoExtension.class)
@@ -86,6 +89,24 @@ class InterfaceFileBlobStoreServiceTest {
         assertThat(exception)
             .hasMessage("Blob checksum validation failed for filestore UUID '%s': expected '%s' but was '%s'"
                 .formatted(exception.getFilestoreUuid(), CHECKSUM, DIFFERENT_CHECKSUM));
+        verify(blobClient).deleteIfExists();
+    }
+
+    @Test
+    void uploadDeletesPartialBlobAndPropagatesUploadFailure() {
+        BlobUploadException uploadFailure = new BlobUploadException(
+            FILE_UUID, CONTAINER_NAME, new RuntimeException(
+                String.format("Blob upload failed for filestore UUID '%s': failed", FILE_UUID)));
+
+        doThrow(uploadFailure).when(blobClient)
+            .upload(any(InputStream.class));
+
+        BlobUploadException exception = assertThrows(BlobUploadException.class, () ->
+            service.uploadBaisFile(FILE_UUID, CONTAINER_NAME, stream, CHECKSUM));
+
+        assertThat(exception)
+            .hasMessage("Blob upload failed for filestore UUID '%s': failed", FILE_UUID);
+
         verify(blobClient).deleteIfExists();
     }
 
