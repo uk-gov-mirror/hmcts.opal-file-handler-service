@@ -78,10 +78,6 @@ public class TestContainerConfig {
         AZURITE_CONTAINER = new GenericContainer<>(DockerImageName.parse(DEFAULT_AZURITE_IMAGE))
             .withCommand(
                 "azurite-blob --blobHost 0.0.0.0 --blobPort " + AZURITE_BLOB_PORT + " --skipApiVersionCheck")
-            .withClasspathResourceMapping(
-                "azurite-data/",
-                "/data",
-                BindMode.READ_WRITE)
             .withExposedPorts(AZURITE_BLOB_PORT);
         AZURITE_CONTAINER.start();
     }
