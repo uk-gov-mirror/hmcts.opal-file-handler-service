@@ -1,9 +1,10 @@
 package uk.gov.hmcts.opal.filehandler.service.blobstore;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,142 +12,225 @@ import com.azure.core.util.BinaryData;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.models.BlobProperties;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.hmcts.opal.filehandler.exception.BlobChecksumValidationException;
 import uk.gov.hmcts.opal.filehandler.exception.BlobNotFoundException;
 import uk.gov.hmcts.opal.filehandler.exception.BlobStorageContainerNotFoundException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 
 @ExtendWith(MockitoExtension.class)
 class InterfaceFileBlobStoreServiceTest {
 
-    @Mock
-    private FileHandlerAzureStorageConfig config;
+    private static final long INTERFACE_FILE_ID = 1L;
+    private static final String BLOB_CONTAINER_NAME = "caps-report";
+    private static final String EXPECTED_CHECKSUM = "1fa7130130167122bb83decf6cb3bdb1";
+    private static final String MISMATCHED_CHECKSUM = "00000000000000000000000000000000";
+    private static final String UPLOAD_FAILURE_MESSAGE = "Blob upload failed";
+    private static final byte[] BAIS_FILE_CONTENT = "CAPS report".getBytes(StandardCharsets.UTF_8);
+    private static final UUID FILESTORE_UUID = UUID.fromString("eea2bfd9-4eed-4e54-81e9-2bcc9b6b1810");
+    private static final String BLOB_NAME = FILESTORE_UUID.toString();
 
     @Mock
     private BlobServiceClient blobServiceClient;
 
     @Mock
-    private BlobContainerClient container;
+    private BlobContainerClient blobContainerClient;
 
     @Mock
-    private BlobClient blob;
+    private BlobClient blobClient;
 
-    private InterfaceFileBlobStoreService interfaceFilesBlobStoreService;
+    @Mock
+    private BlobProperties blobProperties;
 
-    private final UUID fileUUID = UUID.randomUUID();
+    @Mock
+    private BinaryData downloadedFileContents;
+
+    @InjectMocks
+    private InterfaceFileBlobStoreService blobStoreService;
+
+    private InputStream baisFileStream;
 
     @BeforeEach
     void setUp() {
-        interfaceFilesBlobStoreService = new InterfaceFileBlobStoreService(blobServiceClient);
+        baisFileStream = new ByteArrayInputStream(BAIS_FILE_CONTENT);
     }
 
     @Test
-    void fetchInterfaceFile() {
-        when(blobServiceClient.getBlobContainerClient("container")).thenReturn(container);
-        when(container.getBlobClient(eq(fileUUID.toString()))).thenReturn(blob);
-        when(container.exists()).thenReturn(true);
-        when(blob.exists()).thenReturn(true);
-        BinaryData mockResult = mock(BinaryData.class);
-        when(blob.downloadContent()).thenReturn(mockResult);
+    void uploadBaisFile_uploadsFileWhenChecksumMatches() {
+        mockBlobLocation();
 
-        BinaryData response = interfaceFilesBlobStoreService.fetchInterfaceFile(1L, fileUUID, "container");
+        when(blobClient.getProperties()).thenReturn(blobProperties);
+        when(blobProperties.getContentMd5()).thenReturn(HexFormat.of().parseHex(EXPECTED_CHECKSUM));
 
-        assertEquals(response, mockResult);
-        verify(blobServiceClient).getBlobContainerClient(eq("container"));
-        verify(container).getBlobClient(eq(fileUUID.toString()));
+        blobStoreService.uploadBaisFile(FILESTORE_UUID, BLOB_CONTAINER_NAME, baisFileStream, EXPECTED_CHECKSUM);
+
+        verify(blobContainerClient).getBlobClient(BLOB_NAME);
+        verify(blobClient).upload(baisFileStream);
+        verify(blobClient, never()).deleteIfExists();
     }
 
     @Test
-    void fetchInterfaceFile_containerDoesNotExist_throwError() {
-        when(blobServiceClient.getBlobContainerClient("container")).thenReturn(container);
-        when(container.exists()).thenReturn(false);
+    void uploadBaisFile_deletesBlobAndThrowsTypedExceptionWhenChecksumDiffers() {
+        mockBlobLocation();
 
-        Exception e = assertThrows(
+        when(blobClient.getProperties()).thenReturn(blobProperties);
+        when(blobProperties.getContentMd5()).thenReturn(HexFormat.of().parseHex(MISMATCHED_CHECKSUM));
+
+        BlobChecksumValidationException exception = assertThrows(
+            BlobChecksumValidationException.class,
+            () -> blobStoreService.uploadBaisFile(
+                FILESTORE_UUID, BLOB_CONTAINER_NAME, baisFileStream, EXPECTED_CHECKSUM));
+
+        assertThat(exception.getFilestoreUuid()).isEqualTo(FILESTORE_UUID);
+        assertThat(exception.getExpectedChecksum()).isEqualTo(EXPECTED_CHECKSUM);
+        assertThat(exception.getActualChecksum()).isEqualTo(MISMATCHED_CHECKSUM);
+        assertThat(exception)
+            .hasMessage("Blob checksum validation failed for filestore UUID '%s': expected '%s' but was '%s'"
+                .formatted(FILESTORE_UUID, EXPECTED_CHECKSUM, MISMATCHED_CHECKSUM));
+        verify(blobClient).deleteIfExists();
+    }
+
+    @Test
+    void uploadBaisFile_deletesPartialBlobAndWrapsUploadFailure() {
+        mockBlobLocation();
+
+        RuntimeException uploadFailure = new RuntimeException(UPLOAD_FAILURE_MESSAGE);
+        doThrow(uploadFailure).when(blobClient).upload(any(InputStream.class));
+
+        BlobUploadException exception = assertThrows(
+            BlobUploadException.class,
+            () -> blobStoreService.uploadBaisFile(
+                FILESTORE_UUID, BLOB_CONTAINER_NAME, baisFileStream, EXPECTED_CHECKSUM));
+
+        assertThat(exception.getFilestoreUuid()).isEqualTo(FILESTORE_UUID);
+        assertThat(exception.getContainerName()).isEqualTo(BLOB_CONTAINER_NAME);
+        assertThat(exception).hasMessage(UPLOAD_FAILURE_MESSAGE).hasCause(uploadFailure);
+        verify(blobClient).deleteIfExists();
+    }
+
+    @Test
+    void fetchInterfaceFile_returnsDownloadedFile() {
+        mockExistingBlob();
+
+        when(blobClient.downloadContent()).thenReturn(downloadedFileContents);
+
+        BinaryData response = blobStoreService.fetchInterfaceFile(
+            INTERFACE_FILE_ID, FILESTORE_UUID, BLOB_CONTAINER_NAME);
+
+        assertThat(response).isSameAs(downloadedFileContents);
+        verify(blobServiceClient).getBlobContainerClient(BLOB_CONTAINER_NAME);
+        verify(blobContainerClient).getBlobClient(BLOB_NAME);
+        verify(blobClient).downloadContent();
+    }
+
+    @Test
+    void fetchInterfaceFile_throwsExceptionWhenContainerDoesNotExist() {
+        when(blobServiceClient.getBlobContainerClient(BLOB_CONTAINER_NAME)).thenReturn(blobContainerClient);
+        when(blobContainerClient.exists()).thenReturn(false);
+
+        BlobStorageContainerNotFoundException exception = assertThrows(
             BlobStorageContainerNotFoundException.class,
-            () -> interfaceFilesBlobStoreService.fetchInterfaceFile(1L, fileUUID,"container")
-        );
-        assertEquals(
-            "500 INTERNAL_SERVER_ERROR \"Blob container \"container\" does not exist\"",
-            e.getMessage()
-        );
+            () -> blobStoreService.fetchInterfaceFile(
+                INTERFACE_FILE_ID, FILESTORE_UUID, BLOB_CONTAINER_NAME));
+
+        assertThat(exception)
+            .hasMessage("500 INTERNAL_SERVER_ERROR \"Blob container \"%s\" does not exist\""
+                .formatted(BLOB_CONTAINER_NAME));
     }
 
     @Test
-    void fetchInterfaceFile_blobDoesNotExist_throwError() {
-        when(blobServiceClient.getBlobContainerClient("container")).thenReturn(container);
-        when(container.exists()).thenReturn(true);
-        when(container.getBlobClient(eq(fileUUID.toString()))).thenReturn(blob);
-        when(blob.exists()).thenReturn(false);
+    void fetchInterfaceFile_throwsExceptionWhenBlobDoesNotExist() {
+        mockBlobLocation();
 
-        Exception e = assertThrows(
+        when(blobContainerClient.exists()).thenReturn(true);
+        when(blobClient.exists()).thenReturn(false);
+
+        BlobNotFoundException exception = assertThrows(
             BlobNotFoundException.class,
-            () -> interfaceFilesBlobStoreService.fetchInterfaceFile(1L, fileUUID,"container")
-        );
-        assertEquals(
-            "500 INTERNAL_SERVER_ERROR \"Expected interface file id: 1 to exist in blobstore "
-            + "container: \"container\" with name \"" + fileUUID.toString() + "\" but this could "
-            + "not be located.\"",
-            e.getMessage()
-        );
+            () -> blobStoreService.fetchInterfaceFile(
+                INTERFACE_FILE_ID, FILESTORE_UUID, BLOB_CONTAINER_NAME));
+
+        assertThat(exception).hasMessage(
+            "500 INTERNAL_SERVER_ERROR \"Expected interface file id: %d to exist in blobstore container: "
+                + "\"%s\" with name \"%s\" but this could not be located.\"",
+            INTERFACE_FILE_ID, BLOB_CONTAINER_NAME, BLOB_NAME);
+        verify(blobClient, never()).downloadContent();
     }
 
     @Test
-    void getBlobContainerClient_returnsContainer() {
-        when(blobServiceClient.getBlobContainerClient("container")).thenReturn(container);
-        when(container.exists()).thenReturn(true);
+    void getBlobContainerClient_returnsContainerWhenItExists() {
+        when(blobServiceClient.getBlobContainerClient(BLOB_CONTAINER_NAME)).thenReturn(blobContainerClient);
+        when(blobContainerClient.exists()).thenReturn(true);
 
-        BlobContainerClient actual = interfaceFilesBlobStoreService.getBlobContainerClient("container");
+        BlobContainerClient result = blobStoreService.getBlobContainerClient(BLOB_CONTAINER_NAME);
 
-        assertEquals(container, actual);
+        assertThat(result).isSameAs(blobContainerClient);
     }
 
     @Test
-    void getBlobContainerClient_notFoundThrowsException() {
-        when(blobServiceClient.getBlobContainerClient("container")).thenReturn(container);
-        when(container.exists()).thenReturn(false);
+    void getBlobContainerClient_throwsExceptionWhenContainerDoesNotExist() {
+        when(blobServiceClient.getBlobContainerClient(BLOB_CONTAINER_NAME)).thenReturn(blobContainerClient);
+        when(blobContainerClient.exists()).thenReturn(false);
 
-        Exception e = assertThrows(
+        BlobStorageContainerNotFoundException exception = assertThrows(
             BlobStorageContainerNotFoundException.class,
-            () -> interfaceFilesBlobStoreService.getBlobContainerClient("container")
-        );
-        assertEquals(
-            "500 INTERNAL_SERVER_ERROR \"Blob container \"container\" does not exist\"",
-            e.getMessage()
-        );
+            () -> blobStoreService.getBlobContainerClient(BLOB_CONTAINER_NAME));
+
+        assertThat(exception)
+            .hasMessage("500 INTERNAL_SERVER_ERROR \"Blob container \"%s\" does not exist\""
+                .formatted(BLOB_CONTAINER_NAME));
     }
 
     @Test
-    void getBlobClient_returnsBlob() {
-        when(container.getBlobClient("filename")).thenReturn(blob);
-        when(blob.exists()).thenReturn(true);
+    void getBlobClient_returnsBlobWhenItExists() {
+        when(blobContainerClient.getBlobClient(BLOB_NAME)).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(true);
 
-        BlobClient actual = interfaceFilesBlobStoreService.getBlobClient(container, "filename");
+        BlobClient result = blobStoreService.getBlobClient(blobContainerClient, BLOB_NAME);
 
-        assertEquals(blob, actual);
+        assertThat(result).isSameAs(blobClient);
     }
 
     @Test
-    void getBlobClient_returnsNull() {
-        when(container.getBlobClient("filename")).thenReturn(blob);
-        when(blob.exists()).thenReturn(false);
+    void getBlobClient_returnsNullWhenBlobDoesNotExist() {
+        when(blobContainerClient.getBlobClient(BLOB_NAME)).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(false);
 
-        BlobClient actual = interfaceFilesBlobStoreService.getBlobClient(container, "filename");
+        BlobClient result = blobStoreService.getBlobClient(blobContainerClient, BLOB_NAME);
 
-        assertEquals(null, actual);
+        assertThat(result).isNull();
     }
 
     @Test
-    void getFileContents() {
-        BinaryData mockResult = mock(BinaryData.class);
-        when(blob.downloadContent()).thenReturn(mockResult);
+    void getFileContents_returnsDownloadedFile() {
+        when(blobClient.downloadContent()).thenReturn(downloadedFileContents);
 
-        BinaryData response = interfaceFilesBlobStoreService.getFileContents(blob);
+        BinaryData result = blobStoreService.getFileContents(blobClient);
 
-        assertEquals(response, mockResult);
+        assertThat(result).isSameAs(downloadedFileContents);
+    }
+
+    private void mockExistingBlob() {
+        mockBlobLocation();
+
+        when(blobContainerClient.exists()).thenReturn(true);
+        when(blobClient.exists()).thenReturn(true);
+    }
+
+    private void mockBlobLocation() {
+        when(blobServiceClient.getBlobContainerClient(BLOB_CONTAINER_NAME)).thenReturn(blobContainerClient);
+        when(blobContainerClient.getBlobClient(BLOB_NAME)).thenReturn(blobClient);
     }
 
 }
