@@ -44,6 +44,7 @@ import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.entity.Type;
 import uk.gov.hmcts.opal.filehandler.exception.BaisSftpFileDownloadException;
+import uk.gov.hmcts.opal.filehandler.exception.BlobChecksumValidationException;
 import uk.gov.hmcts.opal.filehandler.exception.BlobUploadException;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
 import uk.gov.hmcts.opal.filehandler.service.blobstore.InterfaceFileBlobStoreService;
@@ -59,6 +60,7 @@ class AbstractBaisFileProcessorServiceTest {
     private static final String IGNORED_FILE = "ignored-file.txt";
     private static final String CHECKSUM = "3685d7f2b30e9b34b8d3e5496fb45506";
     private static final byte[] FILE_CONTENT = {0, 1, 13, 10, (byte) 255};
+    private static final UUID FILE_UUID = UUID.randomUUID();
 
     @Mock
     private FeatureFlagUtil featureFlagUtil;
@@ -271,6 +273,27 @@ class AbstractBaisFileProcessorServiceTest {
         verify(baisSftpClient).downloadFile(eq(SFTP_USERNAME), eq(secondFile), any());
         assertThat(service.processCount).isOne();
     }
+
+    @Test
+    void uploadedFileHasChecksumFailureResultsInFailedEntity() {
+        when(interfaceFilesRepository.findByFileNameAndChecksumAndStatus(
+            MATCHING_FILE, CHECKSUM, Status.SUCCESS)).thenReturn(Optional.empty());
+
+        doThrow(new BlobChecksumValidationException(
+            FILE_UUID, CHECKSUM, "00000000000000000000000000000000"))
+            .when(interfaceFileBlobStoreService)
+            .uploadBaisFile(any(UUID.class), eq("test-container"), any(InputStream.class), eq(CHECKSUM));
+
+        service.run(baisFileProcessorConfiguration);
+
+        assertThat(service.lastSavedEntity.getStatus()).isEqualTo(Status.FAILED);
+        assertThat(objectMapper.readTree(service.lastSavedEntity.getErrors()).get("message").asString())
+            .isEqualTo("Blob checksum validation failed for filestore UUID '" + FILE_UUID + "': "
+                + "expected '3685d7f2b30e9b34b8d3e5496fb45506' but was '00000000000000000000000000000000'");
+        assertThat(service.processCount).isZero();
+        verify(baisSftpClient, never()).deleteFile(any(), any());
+    }
+
 
     private void configureSuccessfulRun() {
         lenient().when(baisFileProcessorConfiguration.getFeatureFlag()).thenReturn(TEST_FEATURE_FLAG);
