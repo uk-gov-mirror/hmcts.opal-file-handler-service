@@ -26,9 +26,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.hmcts.opal.common.spring.security.OpalJwtAuthenticationToken;
 import uk.gov.hmcts.opal.common.util.SecurityUtil;
-import uk.gov.hmcts.opal.filehandler.config.BTEckohReportBaisFileProcessorConfig;
+import uk.gov.hmcts.opal.filehandler.config.BTEckohReportBaisFileProcessorConfiguration;
 import uk.gov.hmcts.opal.filehandler.config.BaisFileProcessorConfiguration;
-import uk.gov.hmcts.opal.filehandler.config.CapsReportBaisFileProcessorConfig;
+import uk.gov.hmcts.opal.filehandler.config.CapsReportBaisFileProcessorConfiguration;
 import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
@@ -50,10 +50,10 @@ class InterfaceFileServiceTest {
     private InterfaceFileBlobStoreService blobStoreService;
 
     @Mock
-    private BTEckohReportBaisFileProcessorConfig bteckohConfig;
+    private BTEckohReportBaisFileProcessorConfiguration bteckohConfig;
 
     @Mock
-    private CapsReportBaisFileProcessorConfig capsConfig;
+    private CapsReportBaisFileProcessorConfiguration capsConfig;
 
     @Mock
     private OpalJwtAuthenticationToken authToken;
