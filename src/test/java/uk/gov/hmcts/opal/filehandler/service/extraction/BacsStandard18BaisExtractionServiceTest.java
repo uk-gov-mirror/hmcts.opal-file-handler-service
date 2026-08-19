@@ -12,28 +12,34 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.hmcts.opal.filehandler.testutil.StringTestUtil.leftPad;
 import static uk.gov.hmcts.opal.filehandler.testutil.StringTestUtil.put;
 import static uk.gov.hmcts.opal.filehandler.testutil.StringTestUtil.rightPad;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
+import uk.gov.hmcts.opal.filehandler.entity.BusinessUnitBankAccountEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.PaymentType;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
 import uk.gov.hmcts.opal.filehandler.entity.Type;
+import uk.gov.hmcts.opal.filehandler.repository.BusinessUnitBankAccountRepository;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
 import uk.gov.hmcts.opal.filehandler.service.extraction.model.BankDetails;
+import uk.gov.hmcts.opal.filehandler.service.extraction.model.DestinationDetails;
 import uk.gov.hmcts.opal.filehandler.service.extraction.model.InterfaceFileCommonDataExtract;
 import uk.gov.hmcts.opal.filehandler.service.extraction.model.OriginatorDetails;
 import uk.gov.hmcts.opal.filehandler.service.extraction.model.Transaction;
@@ -47,14 +53,16 @@ class BacsStandard18BaisExtractionServiceTest {
         "BACS Standard 18 transaction rows contained mixed destination bank details or mixed transaction codes";
 
     private final InterfaceFilesRepository repository = mock(InterfaceFilesRepository.class);
-    private final BacsStandard18BaisExtractionService service = new BacsStandard18BaisExtractionService(repository);
+    private final BusinessUnitBankAccountRepository bubaRepository = mock(BusinessUnitBankAccountRepository.class);
+    private final BacsStandard18BaisExtractionService service =
+        new BacsStandard18BaisExtractionService(repository, bubaRepository);
     private static final BankDetails DESTINATION = destinationBankDetails("560033", "27048527", "Beneficiary Name 1");
 
     @Nested
     class ExtractStandardData {
 
         private final BacsStandard18BaisExtractionService extractionService = spy(
-            new BacsStandard18BaisExtractionService(repository)
+            new BacsStandard18BaisExtractionService(repository, bubaRepository)
         );
 
         @Test
@@ -300,7 +308,8 @@ class BacsStandard18BaisExtractionServiceTest {
     class IsTotalRow {
 
         private final BacsStandard18BaisExtractionService service = new BacsStandard18BaisExtractionService(
-            mock(InterfaceFilesRepository.class)
+            mock(InterfaceFilesRepository.class),
+            mock(BusinessUnitBankAccountRepository.class)
         );
 
         @Test
@@ -318,7 +327,8 @@ class BacsStandard18BaisExtractionServiceTest {
     class ParseTransaction {
 
         private final BacsStandard18BaisExtractionService service = new BacsStandard18BaisExtractionService(
-            mock(InterfaceFilesRepository.class)
+            mock(InterfaceFilesRepository.class),
+            mock(BusinessUnitBankAccountRepository.class)
         );
 
         @Test
@@ -547,7 +557,8 @@ class BacsStandard18BaisExtractionServiceTest {
     class ApplyAllpayDdSourceUpdate {
 
         private final InterfaceFilesRepository repository = mock(InterfaceFilesRepository.class);
-        private final BacsStandard18BaisExtractionService service = new BacsStandard18BaisExtractionService(repository);
+        private final BacsStandard18BaisExtractionService service =
+            new BacsStandard18BaisExtractionService(repository, bubaRepository);
 
         @Test
         void shouldUpdateAndSaveAllpayDdSourceWhenFirstOriginatorNameMatches() {
@@ -662,6 +673,53 @@ class BacsStandard18BaisExtractionServiceTest {
                 parsedTransaction("99", destinationBankDetails("560033", "27048527", "Beneficiary Name 1")),
                 destinationBankDetails("560033", "27048527", "Beneficiary Name 1")
             )).isTrue();
+        }
+    }
+
+    @Nested
+    class GetBusinessUnitBankAccount {
+        private final DestinationDetails destinationDetails = mock(DestinationDetails.class);
+        private final BankDetails bankDetails = mock(BankDetails.class);
+        private final InterfaceFileCommonDataExtract input = mock(InterfaceFileCommonDataExtract.class);
+
+        @Test
+        void shouldReturnWhenDataIsFound() {
+            when(input.getDestinationDetails()).thenReturn(destinationDetails);
+            when(input.getFileName()).thenReturn("file.dat");
+            when(destinationDetails.getBankDetails()).thenReturn(bankDetails);
+            when(bankDetails.getSortCode()).thenReturn("010101");
+            when(bankDetails.getAccountNumber()).thenReturn("12345678");
+            when(bubaRepository.findByBankSortCodeAndBankAccountNumber(eq("010101"), eq("12345678")))
+                .thenReturn(Optional.of(mock(BusinessUnitBankAccountEntity.class)));
+
+            BusinessUnitBankAccountEntity response = service.getBusinessUnitBankAccount(input);
+
+            verify(bubaRepository, times(1)).findByBankSortCodeAndBankAccountNumber(
+                eq("010101"),
+                eq("12345678")
+            );
+            assertThat(response).isNotNull();
+        }
+
+        @Test
+        void shouldThrowErrorWhenDataIsNotFound() {
+            when(input.getDestinationDetails()).thenReturn(destinationDetails);
+            when(input.getFileName()).thenReturn("file.dat");
+            when(destinationDetails.getBankDetails()).thenReturn(bankDetails);
+            when(bankDetails.getSortCode()).thenReturn("010101");
+            when(bankDetails.getAccountNumber()).thenReturn("12345678");
+            when(bubaRepository.findByBankSortCodeAndBankAccountNumber(eq("010101"), eq("12345678")))
+                .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getBusinessUnitBankAccount(input))
+                .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Business unit bank account with sort code '010101' and account "
+                        + "number '12345678' could not be located for file_name 'file.dat'");
+
+            verify(bubaRepository, times(1)).findByBankSortCodeAndBankAccountNumber(
+                eq("010101"),
+                eq("12345678")
+            );
         }
     }
 

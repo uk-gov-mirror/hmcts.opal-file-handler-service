@@ -1,5 +1,6 @@
 package uk.gov.hmcts.opal.filehandler.service.extraction;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -12,6 +13,7 @@ import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.PaymentType;
 import uk.gov.hmcts.opal.filehandler.entity.Status;
+import uk.gov.hmcts.opal.filehandler.repository.BusinessUnitBankAccountRepository;
 import uk.gov.hmcts.opal.filehandler.repository.InterfaceFilesRepository;
 import uk.gov.hmcts.opal.filehandler.service.extraction.model.BankDetails;
 import uk.gov.hmcts.opal.filehandler.service.extraction.model.DestinationDetails;
@@ -31,6 +33,7 @@ public class BacsStandard18BaisExtractionService implements ExtractionService<In
     private static final DateTimeFormatter OUTPUT_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final InterfaceFilesRepository interfaceFilesRepository;
+    private final BusinessUnitBankAccountRepository businessUnitBankAccountRepository;
 
     @Override
     public List<InterfaceFileCommonDataExtract> extractStandardData(
@@ -71,9 +74,14 @@ public class BacsStandard18BaisExtractionService implements ExtractionService<In
 
     @Override
     public BusinessUnitBankAccountEntity getBusinessUnitBankAccount(InterfaceFileCommonDataExtract extractedData) {
-        throw new UnsupportedOperationException(
-            "PO-6440 implements BACS Standard 18 business unit bank account lookup"
-        );
+        BankDetails bank = extractedData.getDestinationDetails().getBankDetails();
+        return businessUnitBankAccountRepository.findByBankSortCodeAndBankAccountNumber(
+            bank.getSortCode(),bank.getAccountNumber())
+            .orElseThrow(() -> new EntityNotFoundException(
+                String.format("Business unit bank account with sort code '%s' and account number '%s' could not be "
+                    + "located for file_name '%s'",
+                    bank.getSortCode(), bank.getAccountNumber(), extractedData.getFileName())
+            ));
     }
 
     void validateInputs(InterfaceFileEntity sourceInterfaceFile, InputStream fileContents) {
