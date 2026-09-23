@@ -388,7 +388,7 @@ dependencies {
   implementation 'org.apache.poi:poi-ooxml:5.5.1'
 
   implementation 'com.azure:azure-storage-blob:12.35.1'
-  implementation 'com.microsoft.azure:applicationinsights-web:3.7.9'
+  implementation 'com.microsoft.azure:applicationinsights-web:3.7.10'
 
   implementation 'commons-logging:commons-logging:1.4.0'
   implementation "org.apache.logging.log4j:log4j-api:${log4JVersion}"
@@ -413,7 +413,7 @@ dependencies {
   implementation 'com.azure:azure-storage-blob:12.35.1'
 
   //Annotation
-  annotationProcessor 'org.hibernate.orm:hibernate-processor:7.4.9.Final'
+  annotationProcessor 'org.hibernate.orm:hibernate-processor:7.4.10.Final'
 
   compileOnly 'org.projectlombok:lombok:1.18.48'
   annotationProcessor 'org.projectlombok:lombok:1.18.48'
@@ -440,9 +440,9 @@ dependencies {
   testImplementation "net.serenity-bdd:serenity-report-resources:${serenityVersion}"
   testImplementation "net.serenity-bdd:serenity-cucumber:${serenityVersion}"
   testImplementation "net.serenity-bdd:serenity-ensure:${serenityVersion}"
-  testImplementation 'com.hierynomus:sshj:0.40.0'
+  testImplementation 'com.hierynomus:sshj:0.41.1'
 
-  integrationTestImplementation 'org.wiremock.integrations:wiremock-spring-boot:4.2.3'
+  integrationTestImplementation 'org.wiremock.integrations:wiremock-spring-boot:4.4.2'
   integrationTestImplementation 'org.springframework.security:spring-security-test'
   integrationTestImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 

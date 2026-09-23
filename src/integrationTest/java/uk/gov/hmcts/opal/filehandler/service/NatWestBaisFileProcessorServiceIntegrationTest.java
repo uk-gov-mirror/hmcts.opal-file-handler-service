@@ -29,7 +29,7 @@ import uk.gov.hmcts.opal.filehandler.testdata.BusinessUnitBankAccountEntityTestD
 
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
-    "launchdarkly.default-flag-values.natwest-file-transfer-Job=true",
+    "launchdarkly.default-flag-values.natwest-file-transfer-job=true",
 })
 public class NatWestBaisFileProcessorServiceIntegrationTest extends AbstractBaisFileProcessorServiceIntegrationTest {
 
@@ -64,7 +64,7 @@ public class NatWestBaisFileProcessorServiceIntegrationTest extends AbstractBais
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.natwest-file-transfer-Job=true"
+        "launchdarkly.default-flag-values.natwest-file-transfer-job=true"
     })
     public class BankingInterfacesDisabled {
 
@@ -82,17 +82,17 @@ public class NatWestBaisFileProcessorServiceIntegrationTest extends AbstractBais
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
-        "launchdarkly.default-flag-values.natwest-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.natwest-file-transfer-job=false"
     })
     public class NatWestFileTransferJobDisabled {
 
         @Test
-        @DisplayName("AC1: Feature flag 'natwest-file-transfer-Job' is false")
+        @DisplayName("AC1: Feature flag 'natwest-file-transfer-job' is false")
         void natWestFileTransferJobIsDisabled() {
             FeatureDisabledException exception = assertThrows(FeatureDisabledException.class, () ->
                 natWestBaisFileProcessorService.run(natWestBaisFileProcessorConfiguration));
 
-            assertThat(exception).hasMessage("natwest-file-transfer-Job is not enabled");
+            assertThat(exception).hasMessage("natwest-file-transfer-job is not enabled");
         }
 
     }
@@ -100,7 +100,7 @@ public class NatWestBaisFileProcessorServiceIntegrationTest extends AbstractBais
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.natwest-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.natwest-file-transfer-job=false"
     })
     public class BothFeatureFlagsDisabled {
 

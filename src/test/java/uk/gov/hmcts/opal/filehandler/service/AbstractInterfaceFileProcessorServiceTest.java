@@ -138,7 +138,7 @@ class AbstractInterfaceFileProcessorServiceTest {
             assertThat(logAppender.list)
                 .filteredOn(event -> event.getLevel() == Level.INFO)
                 .extracting(ILoggingEvent::getFormattedMessage)
-                .containsExactly(
+                .containsAnyOf(
                     "No files found in BAIS for user 'sftp-username' when processing source 'CAPS_REPORT'");
         }
 

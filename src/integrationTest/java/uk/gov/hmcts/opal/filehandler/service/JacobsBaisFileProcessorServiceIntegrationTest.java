@@ -26,7 +26,7 @@ import uk.gov.hmcts.opal.filehandler.testdata.BusinessUnitBankAccountEntityTestD
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
     "opal.file-handler-service.file-types.bailiffs.jacobs.sftp-username=Jacobs",
-    "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-Job]=true"
+    "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-job]=true"
 })
 public class JacobsBaisFileProcessorServiceIntegrationTest
     extends AbstractBaisFileProcessorServiceIntegrationTest {
@@ -61,7 +61,7 @@ public class JacobsBaisFileProcessorServiceIntegrationTest
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-Job]=true"
+        "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-job]=true"
     })
     public class BankingInterfacesDisabled {
 
@@ -78,24 +78,24 @@ public class JacobsBaisFileProcessorServiceIntegrationTest
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
-        "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-Job]=false"
+        "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-job]=false"
     })
     public class JacobsFileTransferJobDisabled {
 
         @Test
-        @DisplayName("AC1: Feature flag 'bailiffs.jacobs-file-transfer-Job' is false")
+        @DisplayName("AC1: Feature flag 'bailiffs.jacobs-file-transfer-job' is false")
         void bankingInterfacesIsDisabled() {
             FeatureDisabledException exception = assertThrows(FeatureDisabledException.class, () ->
                 service.run(configuration));
 
-            assertThat(exception).hasMessage("bailiffs.jacobs-file-transfer-Job is not enabled");
+            assertThat(exception).hasMessage("bailiffs.jacobs-file-transfer-job is not enabled");
         }
     }
 
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-Job]=false"
+        "launchdarkly.default-flag-values[bailiffs.jacobs-file-transfer-job]=false"
     })
     public class BothFeatureFlagsDisabled {
 

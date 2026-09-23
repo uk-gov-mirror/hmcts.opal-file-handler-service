@@ -142,21 +142,21 @@ opal:
     file-types:
       caps-report:
         container-name: ${CAPS_REPORT_AZURE_STORAGE_CONTAINER:caps-report}
-        feature-flag: caps-report-file-transfer-Job
+        feature-flag: caps-report-file-transfer-job
         file-name-regex: ^CapFa\.GB\.\d{8}\.\d{6}\.xml$
         source: CAPS_REPORT
         target: OPAL
         sftp-username: ${BAIS_SFTP_CAPS_REPORT_USERNAME:}
       bteckoh-report:
         container-name: ${BTECKOH_REPORT_AZURE_STORAGE_CONTAINER:bteckoh-report}
-        feature-flag: bteckoh-report-file-transfer-Job
+        feature-flag: bteckoh-report-file-transfer-job
         file-name-regex: ^2498-MCPLDB-MOJ-Payments-Report-Daily-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.xlsx$
         source: BTECKOH_REPORT
         target: OPAL
         sftp-username: ${BAIS_SFTP_BTECKOH_REPORT_USERNAME:}
       allpay:
         container-name: ${ALLPAY_AZURE_STORAGE_CONTAINER:allpay}
-        feature-flag: allpay-file-transfer-Job
+        feature-flag: allpay-file-transfer-job
         file-name-regex: ^a121_\d{8}_\d{6}\.(dat|err|crf|dir|sta)$
         source: ALLPAY
         target: OPAL
@@ -170,29 +170,36 @@ opal:
         sftp-username: ${BAIS_SFTP_DWP_USERNAME:}
       natwest:
         container-name: ${NATWEST_AZURE_STORAGE_CONTAINER:natwest}
-        feature-flag: natwest-file-transfer-Job
+        feature-flag: natwest-file-transfer-job
         file-name-regex: (Y01A\.FPCAS\.#D\.C\d{6}\.D\d{6}|Y01A\.CARS\.#D\.SBURZ\d{2}\.D\d{6})
         source: NATWEST
         target: OPAL
         sftp-username: ${BAIS_SFTP_NATWEST_USERNAME:}
       barclaycard:
         container-name: ${BARCLAYCARD_AZURE_STORAGE_CONTAINER:barclaycard}
-        feature-flag: barclaycard-file-transfer-Job
+        feature-flag: barclaycard-file-transfer-job
         file-name-regex: a121_\d{8}_\d{6}\.dat
         source: BARCLAYCARD
         target: OPAL
         sftp-username: ${BAIS_SFTP_BARCLAYCARD_USERNAME:}
+      bteckoh-transfer:
+        container-name: ${BTECKOH_AZURE_STORAGE_CONTAINER:bteckoh}
+        feature-flag: bteckoh-file-transfer-job
+        file-name-regex: ^a121_\d{8}_\d{6}\.dat$
+        source: BTECKOH
+        target: OPAL
+        sftp-username: ${BAIS_SFTP_BTECKOH_USERNAME:}
       bailiffs:
         jacobs:
           container-name: ${JACOBS_AZURE_STORAGE_CONTAINER:jacobs}
-          feature-flag: bailiffs.jacobs-file-transfer-Job
+          feature-flag: bailiffs.jacobs-file-transfer-job
           file-name-regex: ^\d{10}_dat_\d{10}_\d{8}_\d{6}\.txt$
           source: JACOBS
           target: OPAL
           sftp-username: ${BAIS_SFTP_JACOBS_USERNAME:}
         cder:
           container-name: ${CDER_AZURE_STORAGE_CONTAINER:cder}
-          feature-flag: bailiffs.cder-file-transfer-Job
+          feature-flag: bailiffs.cder-file-transfer-job
           file-name-regex: \d{10}_dat_\d{10}_\d{8}_\d{6}.txt
           source: CDER
           target: OPAL
@@ -231,15 +238,16 @@ launchdarkly:
     release-1b: ${RELEASE_1B_ENABLED:false}
     release-1c: ${RELEASE_1C_ENABLED:false}
     release-1c-banking-interfaces: ${RELEASE_1C_BANKING_INTERFACES_ENABLED:false}
-    caps-report-file-transfer-Job: ${CAPS_REPORT_FILE_TRANSFER_JOB_ENABLED:false}
-    bteckoh-report-file-transfer-Job: ${BTECKOH_REPORT_FILE_TRANSFER_JOB_ENABLED:false}
-    allpay-file-transfer-Job: ${ALLPAY_FILE_TRANSFER_JOB_ENABLED:false}
+    caps-report-file-transfer-job: ${CAPS_REPORT_FILE_TRANSFER_JOB_ENABLED:false}
+    bteckoh-report-file-transfer-job: ${BTECKOH_REPORT_FILE_TRANSFER_JOB_ENABLED:false}
+    allpay-file-transfer-job: ${ALLPAY_FILE_TRANSFER_JOB_ENABLED:false}
     dwp-file-transfer-job: ${DWP_FILE_TRANSFER_JOB_ENABLED:false}
-    natwest-file-transfer-Job: ${NATWEST_FILE_TRANSFER_JOB_ENABLED:false}
-    barclaycard-file-transfer-Job: ${BARCLAYCARD_FILE_TRANSFER_JOB_ENABLED:false}
+    bteckoh-file-transfer-job: ${BTECKOH_FILE_TRANSFER_JOB_ENABLED:false}
+    natwest-file-transfer-job: ${NATWEST_FILE_TRANSFER_JOB_ENABLED:false}
+    barclaycard-file-transfer-job: ${BARCLAYCARD_FILE_TRANSFER_JOB_ENABLED:false}
     bailiffs:
-      jacobs-file-transfer-Job: ${JACOBS_FILE_TRANSFER_JOB_ENABLED:false}
-      cder-file-transfer-Job: ${CDER_FILE_TRANSFER_JOB_ENABLED:false}
+      jacobs-file-transfer-job: ${JACOBS_FILE_TRANSFER_JOB_ENABLED:false}
+      cder-file-transfer-job: ${CDER_FILE_TRANSFER_JOB_ENABLED:false}
 
 user:
   service:

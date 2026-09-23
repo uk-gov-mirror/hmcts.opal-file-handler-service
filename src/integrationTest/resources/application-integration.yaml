@@ -7,6 +7,8 @@ opal:
         sftp-username: BTEckoh-report
       caps-report:
         sftp-username: CAPS-report
+      bteckoh-transfer:
+        sftp-username: BTEckoh
       natwest:
         sftp-username: NATWEST
       barclaycard:

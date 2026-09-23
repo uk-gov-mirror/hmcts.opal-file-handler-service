@@ -31,7 +31,7 @@ import uk.gov.hmcts.opal.filehandler.support.AbstractBaisFileProcessorServiceInt
 
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
-    "launchdarkly.default-flag-values.bteckoh-report-file-transfer-Job=true",
+    "launchdarkly.default-flag-values.bteckoh-report-file-transfer-job=true",
 })
 @Slf4j
 public class BTEckohReportBaisFileProcessorServiceIntegrationTest
@@ -74,7 +74,7 @@ public class BTEckohReportBaisFileProcessorServiceIntegrationTest
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.bteckoh-report-file-transfer-Job=true"
+        "launchdarkly.default-flag-values.bteckoh-report-file-transfer-job=true"
     })
     public class BankingInterfacesDisabled {
 
@@ -92,17 +92,17 @@ public class BTEckohReportBaisFileProcessorServiceIntegrationTest
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
-        "launchdarkly.default-flag-values.bteckoh-report-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.bteckoh-report-file-transfer-job=false"
     })
     public class BTEckohReportFileTransferJobDisabled {
 
         @Test
-        @DisplayName("AC1: Feature flag 'bteckoh-report-file-transfer-Job' is false")
+        @DisplayName("AC1: Feature flag 'bteckoh-report-file-transfer-job' is false")
         void bankingInterfacesIsDisabled() {
             FeatureDisabledException exception = assertThrows(FeatureDisabledException.class, () ->
                 service.run(config));
 
-            assertThat(exception).hasMessage("bteckoh-report-file-transfer-Job is not enabled");
+            assertThat(exception).hasMessage("bteckoh-report-file-transfer-job is not enabled");
         }
 
     }
@@ -110,7 +110,7 @@ public class BTEckohReportBaisFileProcessorServiceIntegrationTest
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.bteckoh-report-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.bteckoh-report-file-transfer-job=false"
     })
     public class BothFeatureFlagsDisabled {
 
@@ -150,7 +150,7 @@ public class BTEckohReportBaisFileProcessorServiceIntegrationTest
         assertThat(logAppender.list)
             .filteredOn(event -> event.getLevel() == Level.INFO)
             .extracting(ILoggingEvent::getFormattedMessage)
-            .containsExactly(
+            .containsAnyOf(
                 String.format("No files found in BAIS for user '%s' when processing source 'BTECKOH_REPORT'",
                     config.getSftpUsername()));
     }

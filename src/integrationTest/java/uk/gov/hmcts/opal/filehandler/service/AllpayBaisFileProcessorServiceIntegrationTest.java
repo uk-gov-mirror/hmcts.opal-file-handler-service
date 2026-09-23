@@ -2,7 +2,6 @@ package uk.gov.hmcts.opal.filehandler.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -16,26 +15,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.jdbc.Sql;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureDisabledException;
 import uk.gov.hmcts.opal.common.launchdarkly.FeatureFlags;
 import uk.gov.hmcts.opal.filehandler.config.AllpayBaisFileProcessorConfiguration;
+import uk.gov.hmcts.opal.filehandler.entity.BusinessUnitBankAccountEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.Interface;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
 import uk.gov.hmcts.opal.filehandler.entity.Type;
 import uk.gov.hmcts.opal.filehandler.service.queue.MaintenanceInterfaceFilePreprocessQueueService;
 import uk.gov.hmcts.opal.filehandler.support.AbstractBaisFileProcessorServiceIntegrationTest;
+import uk.gov.hmcts.opal.filehandler.testdata.BusinessUnitBankAccountEntityTestData;
 
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
     "opal.file-handler-service.file-types.allpay.sftp-username=AllPay",
-    "launchdarkly.default-flag-values.allpay-file-transfer-Job=true"
+    "launchdarkly.default-flag-values.allpay-file-transfer-job=true"
 })
 public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisFileProcessorServiceIntegrationTest {
 
+    private static final String BUSINESS_UNIT_CODE = "AB01";
     private static final String ALLPAY_FILE = "a121_00350005_300000";
-    private static final String ALLPAY_FILE_CHECKSUM = "bbecbed9c565374b110b7113ecceae03";
+    private static final String ALLPAY_FILE_CHECKSUM = "f3f29c87cf2058c337fa6f130dd66b28";
     private static final String ALLPAY_FILE_RESOURCE = "bais-emulator/" + ALLPAY_FILE;
     private static final String ALLPAY_FILE_CONTAINER = "/home/AllPay/" + ALLPAY_FILE;
 
@@ -45,6 +46,9 @@ public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisF
     @Autowired
     private AllpayBaisFileProcessorConfiguration allpayBaisFileProcessorConfiguration;
 
+    @Autowired
+    private BusinessUnitBankAccountEntityTestData businessUnitBankAccountEntityTestData;
+
     //TODO - Remove mocked bean and replace with test container service bus for integration testing
     @MockitoBean
     private MaintenanceInterfaceFilePreprocessQueueService maintenanceQueueService;
@@ -53,12 +57,23 @@ public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisF
     void setUp() {
         repository.deleteAll();
         blobServiceClient.createBlobContainerIfNotExists(allpayBaisFileProcessorConfiguration.getContainerName());
+
+        businessUnitBankAccountEntityTestData.clear();
+
+        BusinessUnitBankAccountEntity bu = BusinessUnitBankAccountEntity.builder()
+            .id(1L)
+            .businessUnitCode(BUSINESS_UNIT_CODE)
+            .domain(Domain.MAINTENANCE)
+            .bankSortCode("010101")
+            .bankAccountNumber("12341234")
+            .build();
+        businessUnitBankAccountEntityTestData.saveAndFlushBusinessUnitBankAccount(bu);
     }
 
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.allpay-file-transfer-Job=true"
+        "launchdarkly.default-flag-values.allpay-file-transfer-job=true"
     })
     public class BankingInterfacesDisabled {
 
@@ -76,17 +91,17 @@ public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisF
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
-        "launchdarkly.default-flag-values.allpay-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.allpay-file-transfer-job=false"
     })
     public class AllpayFileTransferJobDisabled {
 
         @Test
-        @DisplayName("AC1: Feature flag 'allpay-file-transfer-Job' is false")
+        @DisplayName("AC1: Feature flag 'allpay-file-transfer-job' is false")
         void bankingInterfacesIsDisabled() {
             FeatureDisabledException exception = assertThrows(FeatureDisabledException.class, () ->
                 allpayBaisFileProcessorService.run(allpayBaisFileProcessorConfiguration));
 
-            assertThat(exception).hasMessage("allpay-file-transfer-Job is not enabled");
+            assertThat(exception).hasMessage("allpay-file-transfer-job is not enabled");
         }
 
     }
@@ -94,7 +109,7 @@ public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisF
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.allpay-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.allpay-file-transfer-job=false"
     })
     public class BothFeatureFlagsDisabled {
 
@@ -111,14 +126,6 @@ public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisF
 
     @Test
     @DisplayName("AC2: An Allpay DAT file is stored and transformed to SOURCE_JSON")
-    @Sql(
-        scripts = "classpath:db/insertData/insert_into_business_unit_bank_account.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
-    )
-    @Sql(
-        scripts = "classpath:db/deleteData/delete_from_business_unit_bank_account.sql",
-        executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD
-    )
     void whenAllpayDatFileIsPresentReadStoreAndTransformCorrectly() {
         String file = ALLPAY_FILE + ".dat";
 
@@ -146,13 +153,13 @@ public class AllpayBaisFileProcessorServiceIntegrationTest extends AbstractBaisF
 
         String file = ALLPAY_FILE + fileEnding;
 
-        assertSuccessfulInterfaceFile(
+        var source = assertSuccessfulInterfaceFile(
             file, ALLPAY_FILE_CHECKSUM, Interface.ALLPAY, Type.SOURCE, Domain.MAINTENANCE);
         assertThat(repository.findAll())
             .filteredOn(interfaceFile -> interfaceFile.getType() == Type.SOURCE_JSON)
             .filteredOn(interfaceFile -> file.equals(interfaceFile.getFileName()))
             .isEmpty();
-        verify(maintenanceQueueService, never()).send(anyLong());
+        verify(maintenanceQueueService, never()).send(source.getInterfaceFileId());
         assertBlobChecksum(file, ALLPAY_FILE_CHECKSUM, allpayBaisFileProcessorConfiguration.getContainerName());
         assertNumberOfSftpFiles(allpayBaisFileProcessorConfiguration.getSftpUsername(), 0);
     }

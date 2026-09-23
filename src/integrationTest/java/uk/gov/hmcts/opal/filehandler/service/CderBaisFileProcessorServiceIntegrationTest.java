@@ -29,7 +29,7 @@ import uk.gov.hmcts.opal.filehandler.testdata.BusinessUnitBankAccountEntityTestD
 
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
-    "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-Job]=true"
+    "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-job]=true"
 })
 public class CderBaisFileProcessorServiceIntegrationTest extends AbstractBaisFileProcessorServiceIntegrationTest {
 
@@ -65,24 +65,24 @@ public class CderBaisFileProcessorServiceIntegrationTest extends AbstractBaisFil
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
-        "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-Job]=false"
+        "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-job]=false"
     })
     public class CderFileTransferJobDisabled {
 
         @Test
-        @DisplayName("AC1: Feature flag 'bailiffs.cder-file-transfer-Job' is false")
+        @DisplayName("AC1: Feature flag 'bailiffs.cder-file-transfer-job' is false")
         void cderFileTransferJobIsDisabled() {
             FeatureDisabledException exception = assertThrows(
                 FeatureDisabledException.class, () -> service.run(configuration)
             );
-            assertThat(exception).hasMessage("bailiffs.cder-file-transfer-Job is not enabled");
+            assertThat(exception).hasMessage("bailiffs.cder-file-transfer-job is not enabled");
         }
     }
 
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-Job]=true"
+        "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-job]=true"
     })
     public class BankingInterfacesDisabled {
 
@@ -100,7 +100,7 @@ public class CderBaisFileProcessorServiceIntegrationTest extends AbstractBaisFil
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-Job]=false"
+        "launchdarkly.default-flag-values[bailiffs.cder-file-transfer-job]=false"
     })
     public class BothFeatureFlagsDisabled {
 

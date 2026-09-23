@@ -29,7 +29,7 @@ import uk.gov.hmcts.opal.filehandler.testdata.BusinessUnitBankAccountEntityTestD
 
 @ActiveProfiles("integration")
 @TestPropertySource(properties = {
-    "launchdarkly.default-flag-values.barclaycard-file-transfer-Job=true",
+    "launchdarkly.default-flag-values.barclaycard-file-transfer-job=true",
 })
 public class BarclaycardBaisFileProcessorServiceTest extends AbstractBaisFileProcessorServiceIntegrationTest {
 
@@ -65,24 +65,24 @@ public class BarclaycardBaisFileProcessorServiceTest extends AbstractBaisFilePro
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=true",
-        "launchdarkly.default-flag-values.barclaycard-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.barclaycard-file-transfer-job=false"
     })
     public class NatWestFileTransferJobDisabled {
 
         @Test
-        @DisplayName("AC1: Feature flag 'barclaycard-file-transfer-Job' is false")
+        @DisplayName("AC1: Feature flag 'barclaycard-file-transfer-job' is false")
         void barclaycardFileTransferJobIsDisabled() {
             FeatureDisabledException exception = assertThrows(
                 FeatureDisabledException.class, () -> service.run(configuration)
             );
-            assertThat(exception).hasMessage("barclaycard-file-transfer-Job is not enabled");
+            assertThat(exception).hasMessage("barclaycard-file-transfer-job is not enabled");
         }
     }
 
     @Nested
     @TestPropertySource(properties = {
         "launchdarkly.default-flag-values.release-1c-banking-interfaces=false",
-        "launchdarkly.default-flag-values.barclays-file-transfer-Job=false"
+        "launchdarkly.default-flag-values.barclays-file-transfer-job=false"
     })
     public class BothFeatureFlagsDisabled {
 

@@ -68,6 +68,8 @@ public abstract class AbstractInterfaceFileProcessorService {
     }
 
     protected List<String> selectFilesToProcess(BaisFileProcessorConfiguration config) {
+        log.info("Selecting files to process from BAIS for user '{}' and source '{}'",
+            config.getSftpUsername(), config.getSource());
         List<String> baisFiles = baisSftpClient.listRegularFiles(config.getSftpUsername());
 
         if (baisFiles.isEmpty()) {
