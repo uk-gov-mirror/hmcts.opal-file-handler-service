@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -234,6 +235,42 @@ class InterfaceFileProcessorServiceTest {
 
             assertThat(selectedFiles).containsExactly(MATCHING_FILE, secondMatchingFile);
             assertThat(errorLogs()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("completeIngestion()")
+    class CompleteIngestion {
+
+        @Test
+        @DisplayName("Deletes the source file and marks it successful when source deletion is enabled")
+        void completesAndDeletesSourceFile() {
+            executeTransactionsImmediately();
+            InterfaceFileEntity entity = failedEntity(123L);
+            entity.setStatus(Status.INGESTED);
+            when(baisSftpClient.deleteFile(SFTP_USERNAME, MATCHING_FILE)).thenReturn(true);
+
+            service.completeIngestion(MATCHING_FILE, entity, true);
+
+            assertThat(entity.getStatus()).isEqualTo(Status.SUCCESS);
+            verify(baisSftpClient).deleteFile(SFTP_USERNAME, MATCHING_FILE);
+            verify(repository).save(entity);
+            verify(transactionTemplate).executeWithoutResult(any());
+        }
+
+        @Test
+        @DisplayName("Marks the file successful without deleting it when source deletion is disabled")
+        void completesWithoutDeletingSourceFile() {
+            executeTransactionsImmediately();
+            InterfaceFileEntity entity = failedEntity(123L);
+            entity.setStatus(Status.INGESTED);
+
+            service.completeIngestion(MATCHING_FILE, entity, false);
+
+            assertThat(entity.getStatus()).isEqualTo(Status.SUCCESS);
+            verify(repository).save(entity);
+            verify(transactionTemplate).executeWithoutResult(any());
+            verifyNoInteractions(baisSftpClient);
         }
     }
 

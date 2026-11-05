@@ -41,15 +41,14 @@ paths:
                   allOf:
                     - if:
                         required:
-                          - type
-                        properties:
-                          type:
-                            not:
-                              const: SOURCE
-                      then:
+                          - should_pre_process_file
                         properties:
                           should_pre_process_file:
-                            const: false
+                            const: true
+                      then:
+                        properties:
+                          type:
+                            const: SOURCE
                     - if:
                         required:
                           - type
@@ -69,7 +68,9 @@ paths:
                     should_pre_process_file:
                       type: boolean
                       default: false
-                      description: DB Mapping - interface_files.should_pre_process_file -> defaulted to false if not provided. Only applied if type = 'SOURCE'
+                      description: >-
+                        May be true only when type is SOURCE. When true, creates the
+                        SOURCE_JSON and TRANSFORMED_JSON files for this source file.
                     source:
                       $ref: '#/components/schemas/interfaceFileEnum'
                     target:
