@@ -178,7 +178,7 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
             InterfaceFileObjectInterfaceFile expectedResponse = buildExpectedResponse(
                 buildEntity("some-file-name",
                     "d553f8f289bd08e5c513de5c000c0374",
-                    Status.INGESTED,
+                    Status.SUCCESS,
                     null, null, 1L)
             );
 
@@ -235,7 +235,7 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
             insertInterfaceFileEntity(originalEntity);
             InterfaceFileObjectInterfaceFile expectedResponse = buildExpectedResponse(
                 buildEntity("some-other-file-name",
-                    "d553f8f289bd08e5c513de5c000c0374", Status.INGESTED,
+                    "d553f8f289bd08e5c513de5c000c0374", Status.SUCCESS,
                     null, originalEntity.getInterfaceFileId(), 1L)
             );
             String metadata = toJsonString(buildMetaData(InterfaceFileEnumInterfaceFile.BTECKOH_REPORT,
@@ -317,14 +317,14 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
             InterfaceFileObjectInterfaceFile response = uploadContent(fileContents,
                 buildMetaData(InterfaceFileEnumInterfaceFile.BTECKOH_REPORT, null), isSystemUser);
 
-            assertEquals(StatusEnumInterfaceFile.INGESTED, response.getStatus());
+            assertEquals(StatusEnumInterfaceFile.SUCCESS, response.getStatus());
             assertEquals(incomingChecksum, response.getChecksum());
             assertNull(response.getErrors());
             assertNotEquals(original.getInterfaceFileId(), response.getInterfaceFileId());
             assertNotEquals(original.getFilestoreUuid(), response.getFilestoreUuid());
             assertEquals(2, repository.count());
             InterfaceFileEntity stored = repository.findById(response.getInterfaceFileId()).orElseThrow();
-            assertEquals(Status.INGESTED, stored.getStatus());
+            assertEquals(Status.SUCCESS, stored.getStatus());
             assertEquals(incomingChecksum, stored.getChecksum());
             assertEquals(Status.SUCCESS, repository.findById(original.getInterfaceFileId()).orElseThrow().getStatus());
             assertAddedToBlobStorage("bteckoh-report", response.getFilestoreUuid().toString());
@@ -345,7 +345,7 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
             InterfaceFileObjectInterfaceFile response = uploadContent(fileContents,
                 buildMetaData(InterfaceFileEnumInterfaceFile.BTECKOH_REPORT, null), isSystemUser);
 
-            assertEquals(StatusEnumInterfaceFile.INGESTED, response.getStatus());
+            assertEquals(StatusEnumInterfaceFile.SUCCESS, response.getStatus());
             assertNotEquals(original.getInterfaceFileId(), response.getInterfaceFileId());
             assertNotEquals(uuid, response.getFilestoreUuid());
             assertEquals(2, repository.count());
@@ -385,7 +385,7 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
             metadata.setFileName("different-metadata-name.xlsx");
             InterfaceFileObjectInterfaceFile response = uploadContent(fileContents, metadata, isSystemUser);
 
-            assertEquals(StatusEnumInterfaceFile.INGESTED, response.getStatus());
+            assertEquals(StatusEnumInterfaceFile.SUCCESS, response.getStatus());
             assertEquals("some-file-name", response.getFileName());
             assertEquals(response.getFileName(), repository.findById(response.getInterfaceFileId())
                 .orElseThrow().getFileName());
@@ -483,7 +483,7 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
         void storesUploadedFile(boolean isSystemUser) {
             InterfaceFileObjectInterfaceFile response = uploadVariantBanking(isSystemUser);
 
-            assertEquals(StatusEnumInterfaceFile.INGESTED, response.getStatus());
+            assertEquals(StatusEnumInterfaceFile.SUCCESS, response.getStatus());
             assertEquals(checksum, response.getChecksum());
             assertEquals(FILE_NAME, response.getFileName());
             assertEquals("VARIANT_BANKING", response.getSource().getValue());
@@ -495,7 +495,7 @@ public class AddInterfaceFileTest extends AbstractControllerIntegrationTest {
 
             InterfaceFileEntity stored = repository.findById(response.getInterfaceFileId()).orElseThrow();
             assertEquals(Interface.VARIANT_BANKING, stored.getSource());
-            assertEquals(Status.INGESTED, stored.getStatus());
+            assertEquals(Status.SUCCESS, stored.getStatus());
             assertEquals(response.getFilestoreUuid(), stored.getFilestoreUuid());
             assertThat(stored.getBusinessUnitId()).containsExactly((short) 10);
             assertExistsInDatabase(stored.getInterfaceFileId());

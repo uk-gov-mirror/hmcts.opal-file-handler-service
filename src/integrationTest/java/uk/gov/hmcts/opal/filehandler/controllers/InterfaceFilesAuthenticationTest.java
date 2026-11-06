@@ -147,7 +147,7 @@ class InterfaceFilesAuthenticationTest extends AbstractControllerIntegrationTest
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.file_name").value(UPLOAD_FILE_NAME))
             .andExpect(jsonPath("$.domain").value("FINES"))
-            .andExpect(jsonPath("$.status").value("INGESTED"));
+            .andExpect(jsonPath("$.status").value("SUCCESS"));
 
         assertEquals(2, repository.count());
     }
@@ -184,7 +184,7 @@ class InterfaceFilesAuthenticationTest extends AbstractControllerIntegrationTest
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.file_name").value(UPLOAD_FILE_NAME))
             .andExpect(jsonPath("$.domain").value("FINES"))
-            .andExpect(jsonPath("$.status").value("INGESTED"));
+            .andExpect(jsonPath("$.status").value("SUCCESS"));
 
         assertEquals(2, repository.count());
     }

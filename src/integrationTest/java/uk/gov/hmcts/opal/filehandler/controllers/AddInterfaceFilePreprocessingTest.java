@@ -165,7 +165,7 @@ class AddInterfaceFilePreprocessingTest extends AbstractControllerIntegrationTes
     void skipsPreprocessingWhenFalse(Interface sourceType) throws IOException {
         final Map<String, Set<String>> blobsBefore = blobNamesByContainer();
         InterfaceFileObjectInterfaceFile response = upload(sourceType, false);
-        InterfaceFileEntity source = assertSource(response, sourceType, Status.INGESTED);
+        InterfaceFileEntity source = assertSource(response, sourceType, Status.SUCCESS);
 
         assertThat(repository.findAll()).extracting(InterfaceFileEntity::getType).containsExactly(Type.SOURCE);
         assertThat(source.getBusinessUnitId()).containsExactly(SUPPLIED_BUSINESS_UNIT_ID);
