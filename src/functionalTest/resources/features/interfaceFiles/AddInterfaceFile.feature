@@ -32,7 +32,7 @@ Feature: Add Interface File
     Given an ingested upload exists for this scenario
     When I upload the BTEckoh interface file
     Then the response status code is 201
-    And the uploaded interface file is persisted with status "INGESTED"
+    And the uploaded interface file is persisted with status "SUCCESS"
     And the repeat upload has a different record and blob
 
   @AC2
@@ -46,7 +46,7 @@ Feature: Add Interface File
   Scenario: A different metadata filename does not prevent upload
     When I upload the BTEckoh interface file with a different metadata filename
     Then the response status code is 201
-    And the uploaded interface file is persisted with status "INGESTED"
+    And the uploaded interface file is persisted with status "SUCCESS"
     And the uploaded blob matches the BTEckoh workbook
 
   @AC2

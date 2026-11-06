@@ -87,7 +87,7 @@ Feature: Get Interface Files
       | target    | OPAL             |
       | type      | SOURCE           |
       | domain    | MAINTENANCE      |
-      | status    | INGESTED         |
+      | status    | SUCCESS         |
       | from_date | 2099-01-01T20:00 |
       | to_date   | 2099-01-01T20:00 |
     Then the response status code is 200
@@ -97,7 +97,7 @@ Feature: Get Interface Files
       | target | OPAL        |
       | type   | SOURCE      |
       | domain | MAINTENANCE |
-      | status | INGESTED    |
+      | status | SUCCESS    |
 
   @JIRA-STORY:PO-3947 @JIRA-EPIC:PO-3495
   Scenario: Returns interface files in created datetime order

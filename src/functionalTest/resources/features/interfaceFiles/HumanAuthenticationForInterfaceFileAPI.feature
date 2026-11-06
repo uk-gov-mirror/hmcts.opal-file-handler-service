@@ -39,14 +39,14 @@ Feature: Human authentication and domain verification for Interface File API
   Scenario: E2E.05 - a permitted human user can add an interface file
     When I upload the BTEckoh interface file
     Then the response status code is 201
-    And the uploaded interface file is persisted with status "INGESTED"
+    And the uploaded interface file is persisted with status "SUCCESS"
 
   @AC8 @AC18
   Scenario: E2E.06 - a permitted human user can add an interface file for Fines
     Given I am testing as the "opal-test-3@dev.platform.hmcts.net" user
     When I upload the BTEckoh interface file for domain "FINES"
     Then the response status code is 201
-    And the uploaded interface file is persisted with status "INGESTED"
+    And the uploaded interface file is persisted with status "SUCCESS"
 
   @AC9
   Scenario: E2E.07 - adding an interface file is forbidden without Create Interface Files
