@@ -4,19 +4,21 @@ import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBElement;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Unmarshaller;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.Source;
+import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import org.springframework.stereotype.Service;
-import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
 @Service
 public class XmlSchemaUnmarshalService {
@@ -32,13 +34,12 @@ public class XmlSchemaUnmarshalService {
         Objects.requireNonNull(schemaResourcePath, "schemaResourcePath must not be null");
         Objects.requireNonNull(sourceDescription, "sourceDescription must not be null");
 
-        byte[] bytes = StreamUtil.readAllBytes(fileContents, sourceDescription);
-        validateWellFormedXml(bytes, sourceDescription);
+        Source jaxSource = createSAXSource(fileContents, sourceDescription);
 
         try {
             Unmarshaller unmarshaller = JAXBContext.newInstance(targetType).createUnmarshaller();
             unmarshaller.setSchema(schema(schemaResourcePath));
-            Object result = unmarshaller.unmarshal(new ByteArrayInputStream(bytes));
+            Object result = unmarshaller.unmarshal(jaxSource);
             if (targetType.isInstance(result)) {
                 return targetType.cast(result);
             }
@@ -47,22 +48,25 @@ public class XmlSchemaUnmarshalService {
             }
             throw new IllegalArgumentException(sourceDescription + " did not unmarshal to " + targetType.getName());
         } catch (JAXBException ex) {
-            throw new IllegalArgumentException(sourceDescription + " did not match the expected schema", ex);
+            throw new IllegalArgumentException(sourceDescription + " was not valid", ex);
         }
     }
 
-    private void validateWellFormedXml(byte[] bytes, String sourceDescription) {
+
+    private Source createSAXSource(InputStream inputStream, String sourceDescription) {
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-            Document document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(bytes));
-            document.getDocumentElement().normalize();
-        } catch (ParserConfigurationException | SAXException | IOException ex) {
-            throw new IllegalArgumentException(sourceDescription + " was not valid XML", ex);
+            SAXParserFactory spf = SAXParserFactory.newInstance();
+            spf.setNamespaceAware(true);
+            spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            spf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+
+            XMLReader xmlReader = spf.newSAXParser().getXMLReader();
+            InputSource inputSource = new InputSource(inputStream);
+            return new SAXSource(xmlReader, inputSource);
+        } catch (SAXException | ParserConfigurationException e) {
+            throw new IllegalArgumentException(sourceDescription + " was not valid", e);
         }
     }
 

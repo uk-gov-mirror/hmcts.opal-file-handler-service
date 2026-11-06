@@ -3,6 +3,7 @@ package uk.gov.hmcts.opal.filehandler.util;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.xml.bind.UnmarshalException;
 import org.junit.jupiter.api.Test;
 import uk.gov.hmcts.opal.filehandler.generated.pacs.PacsTppSchedule;
 import uk.gov.hmcts.opal.filehandler.testutil.StreamTestUtil;
@@ -27,14 +28,14 @@ class XmlSchemaUnmarshalServiceTest {
     }
 
     @Test
-    void shouldRejectInvalidXmlBeforeSchemaValidation() {
+    void shouldRejectInvalidXml() {
         assertThatThrownBy(() -> service.unmarshal(
             StreamTestUtil.stream("<PacsTppSchedule>"),
             PacsTppSchedule.class,
             PACS_SCHEMA,
             "PACS TTP file"
         )).isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("PACS TTP file was not valid XML");
+            .hasMessageContaining("PACS TTP file was not valid");
     }
 
     @Test
@@ -45,7 +46,8 @@ class XmlSchemaUnmarshalServiceTest {
             PACS_SCHEMA,
             "PACS TTP file"
         )).isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("PACS TTP file could not be read");
+            .hasCauseInstanceOf(UnmarshalException.class)
+            .hasRootCauseMessage("Failed to read stream");
     }
 
     @Test
@@ -71,7 +73,7 @@ class XmlSchemaUnmarshalServiceTest {
             PACS_SCHEMA,
             "PACS TTP file"
         )).isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("PACS TTP file was not valid XML");
+            .hasMessageContaining("PACS TTP file was not valid");
     }
 
     @Test
@@ -85,6 +87,6 @@ class XmlSchemaUnmarshalServiceTest {
             PACS_SCHEMA,
             "PACS TTP file"
         )).isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("PACS TTP file did not match the expected schema");
+            .hasMessageContaining("PACS TTP file was not valid");
     }
 }
