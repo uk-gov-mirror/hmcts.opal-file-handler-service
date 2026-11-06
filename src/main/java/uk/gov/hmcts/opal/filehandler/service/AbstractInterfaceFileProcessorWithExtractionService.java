@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.hmcts.common.exceptions.standard.InternalServerErrorException;
 import uk.gov.hmcts.opal.filehandler.config.FileProcessorConfiguration;
 import uk.gov.hmcts.opal.filehandler.entity.Domain;
 import uk.gov.hmcts.opal.filehandler.entity.InterfaceFileEntity;
@@ -57,12 +58,20 @@ public abstract class AbstractInterfaceFileProcessorWithExtractionService<T exte
             sourceFilesWithJsonFailuresWithinRetryLimit(config.getSource(), maxRetries));
 
         for (InterfaceFileEntity sourceFile : sourceFilesToRetry) {
-            InputStream sourceStream = interfaceFileBlobStoreService.fetchInterfaceFile(
+            try (InputStream sourceStream = interfaceFileBlobStoreService.fetchInterfaceFile(
                 sourceFile.getInterfaceFileId(),
                 sourceFile.getFilestoreUuid(),
-                config.getContainerName()).toStream();
+                config.getContainerName()).toStream()) {
 
-            processFile(sourceFile, sourceStream, getCurrentUserId());
+                processFile(sourceFile, sourceStream, getCurrentUserId());
+            } catch (IOException e) {
+                log.error("Failed to process source file {} with interfaceFileId {}",
+                    sourceFile.getFileName(), sourceFile.getInterfaceFileId(), e);
+                throw new InternalServerErrorException(
+                    "Internal Server Error",
+                    "Failed to process source file " + sourceFile.getFileName()
+                        + " with interfaceFileId " + sourceFile.getInterfaceFileId(), e);
+            }
         }
 
         return super.selectFilesToProcess();

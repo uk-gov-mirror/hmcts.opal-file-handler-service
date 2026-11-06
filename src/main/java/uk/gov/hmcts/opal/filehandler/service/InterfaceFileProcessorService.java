@@ -42,6 +42,10 @@ public class InterfaceFileProcessorService {
     protected final FileIngestionService<String> fileIngestionService;
     protected final FileProcessorConfiguration config;
 
+    protected void processFile(InterfaceFileEntity fileEntity, InputStream inputStream) {
+        processFile(fileEntity, inputStream, getCurrentUserId());
+    }
+
     protected void processFile(
         InterfaceFileEntity fileEntity,
         InputStream inputStream,
