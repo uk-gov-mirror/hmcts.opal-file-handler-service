@@ -10,7 +10,7 @@ Feature: Add Interface File
   Scenario: E2E.01 - Upload a valid interface file to the database and blob store
     When I upload the BTEckoh interface file
     Then the response status code is 201
-    And the uploaded interface file is persisted with status "INGESTED"
+    And the uploaded interface file is persisted with status "SUCCESS"
     And the uploaded blob matches the BTEckoh workbook
     And the response is as expected:
       | source | BTECKOH_REPORT |
