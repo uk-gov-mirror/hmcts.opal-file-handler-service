@@ -90,7 +90,7 @@ public class AddInterfaceFileStepDef extends BaseStepDef {
     public void ingestedUploadExists() {
         uploadWorkbook();
         assertEquals(201, lastResponse().statusCode());
-        uploadedFileIsPersisted("INGESTED");
+        uploadedFileIsPersisted("SUCCESS");
         uploadedBlobMatchesWorkbook();
         originalId = lastResponse().jsonPath().getLong("interface_file_id");
         originalBlob = lastResponse().jsonPath().getString("filestore_uuid");
@@ -153,7 +153,7 @@ public class AddInterfaceFileStepDef extends BaseStepDef {
     public void repeatHasSeparateBlob() {
         assertNotEquals(originalId, lastResponse().jsonPath().getLong("interface_file_id"));
         assertNotEquals(originalBlob, lastResponse().jsonPath().getString("filestore_uuid"));
-        assertTwoRecords("INGESTED", "INGESTED");
+        assertTwoRecords("SUCCESS", "SUCCESS");
         uploadedBlobMatchesWorkbook();
         assertTrue(new BlobStorageClient().contentMatchesResource(originalBlob, WORKBOOK));
     }
