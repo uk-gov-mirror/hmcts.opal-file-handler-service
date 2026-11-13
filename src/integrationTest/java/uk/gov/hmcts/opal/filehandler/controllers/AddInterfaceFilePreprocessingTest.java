@@ -184,7 +184,8 @@ class AddInterfaceFilePreprocessingTest extends AbstractControllerIntegrationTes
     }
 
     @Test
-    void duplicatePreprocessingBugfix() throws IOException {
+    @DisplayName("Duplicates wont reprocess when reprocessing")
+    void duplicatesWontReprocessWhenPreprocessing() throws IOException {
         assertBankingPreprocessing(Interface.VARIANT_BANKING, Domain.FINES, (short) 123);
 
         InterfaceFileObjectInterfaceFile response = upload(Interface.VARIANT_BANKING, true);
