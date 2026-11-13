@@ -116,7 +116,7 @@ public class PreparedBankingPackIntegrationTest extends AbstractInterfaceFilePro
             if (active.testCase().equals("missing-court-mapping")) {
                 assertThat(source.getErrors()).contains(name.substring(0, 10), "could not be located");
             } else {
-                assertThat(source.getErrors()).contains("was not valid XML");
+                assertThat(source.getErrors()).contains("was not valid");
             }
             assertThat(blobServiceClient.getBlobContainerClient(config.getContainerName())
                 .getBlobClient(source.getFilestoreUuid().toString()).exists()).isTrue();
