@@ -44,6 +44,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import uk.gov.hmcts.common.exceptions.standard.InternalServerErrorException;
 import uk.gov.hmcts.opal.common.spring.security.OpalJwtAuthenticationToken;
 import uk.gov.hmcts.opal.common.util.SecurityUtil;
 import uk.gov.hmcts.opal.filehandler.config.BaisFileProcessorConfiguration;
@@ -484,6 +485,30 @@ class AbstractInterfaceFileProcessorWithExtractionServiceServiceTest {
 
     @Nested
     class SelectFilesToProcess {
+
+        @Test
+        void wrapsRetrySourceStreamCloseFailure() throws IOException {
+            IOException exception = new IOException("Failed to close source stream");
+            InputStream sourceStream = mock(InputStream.class);
+            BinaryData sourceData = mock(BinaryData.class);
+            when(sourceData.toStream()).thenReturn(sourceStream);
+            doThrow(exception).when(sourceStream).close();
+
+            mockedSecurityUtil.when(SecurityUtil::getOpalJwtAuthenticationTokenForCurrentUser)
+                .thenReturn(mockedToken);
+            when(mockedToken.getUserId()).thenReturn(CREATOR_ID);
+            when(repository.findAll(ArgumentMatchers.<Specification<InterfaceFileEntity>>any()))
+                .thenReturn(List.of(sourceFile));
+            when(blobStoreService.fetchInterfaceFile(sourceFile.getInterfaceFileId(), sourceFile.getFilestoreUuid(),
+                CONTAINER)).thenReturn(sourceData);
+
+            Throwable thrown = catchThrowable(service::selectFilesToProcess);
+
+            assertThat(thrown)
+                .isInstanceOf(InternalServerErrorException.class)
+                .hasMessage("Failed to process source file source.dat with interfaceFileId 100")
+                .hasCause(exception);
+        }
 
         @Test
         void retriesFailedSourceJsonFilesBeforeSelectingNewBaisFiles() {
