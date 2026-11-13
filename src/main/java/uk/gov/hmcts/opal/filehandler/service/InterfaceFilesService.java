@@ -227,7 +227,7 @@ public class InterfaceFilesService {
 
             entity = repository.save(entity);
 
-            if (shouldPreProcess) {
+            if (shouldPreProcess && entity.getStatus().equals(Status.INGESTED)) {
                 try (InputStream stream = file.getInputStream()) {
                     processorService.processFile(entity, stream);
                 }

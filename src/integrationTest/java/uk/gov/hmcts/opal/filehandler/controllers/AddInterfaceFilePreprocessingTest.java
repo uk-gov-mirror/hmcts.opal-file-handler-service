@@ -1,6 +1,7 @@
 package uk.gov.hmcts.opal.filehandler.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -180,6 +181,23 @@ class AddInterfaceFilePreprocessingTest extends AbstractControllerIntegrationTes
                 .containsExactlyInAnyOrderElementsOf(expectedBlobs);
         });
         verifyNoInteractions(finesQueue, maintenanceQueue, sftpClient);
+    }
+
+    @Test
+    void duplicatePreprocessingBugfix() throws IOException {
+        assertBankingPreprocessing(Interface.VARIANT_BANKING, Domain.FINES, (short) 123);
+
+        InterfaceFileObjectInterfaceFile response = upload(Interface.VARIANT_BANKING, true);
+        assertThat(response.getStatus()).isEqualTo(StatusEnumInterfaceFile.DUPLICATE);
+
+        assertThat(repository.findAll())
+            .extracting(InterfaceFileEntity::getType, InterfaceFileEntity::getStatus)
+            .containsExactlyInAnyOrder(
+                tuple(Type.SOURCE, Status.SUCCESS),
+                tuple(Type.SOURCE_JSON, Status.SUCCESS),
+                tuple(Type.SOURCE, Status.DUPLICATE));
+        verifyNoMoreInteractions(finesQueue);
+        verifyNoInteractions(maintenanceQueue, sftpClient);
     }
 
     private void assertBankingPreprocessing(Interface sourceType, Domain domain, short businessUnitId)
